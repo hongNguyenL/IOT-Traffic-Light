@@ -1,0 +1,11 @@
+model\TrafficSensorData.class
+dao\ControlLogDAO.class
+dao\TrafficSensorDataDAO.class
+dao\JpaUtils.class
+model\ControlLog.class
+com\mycompany\iot\JakartaRestConfiguration.class
+com\mycompany\iot\resources\JakartaEE10Resource.class
+Esp32Server\Esp32ServerListener.class
+controller\AdminServlet.class
+dao\ViolationDAO.class
+model\Violation.class
