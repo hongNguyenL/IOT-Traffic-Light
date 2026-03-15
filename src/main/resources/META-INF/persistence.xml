@@ -11,8 +11,8 @@
         <properties>
             <!-- Database Connection Settings -->
             <property name="jakarta.persistence.jdbc.driver" value="org.postgresql.Driver"/>
-            <property name="jakarta.persistence.jdbc.url" value="jdbc:postgresql://db.vwbelsnquxscdbyakyfz.supabase.co:5432/postgres?sslmode=require"/>
-            <property name="jakarta.persistence.jdbc.user" value="postgres"/>
+            <property name="jakarta.persistence.jdbc.url" value="jdbc:postgresql://aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres?sslmode=require"/>
+            <property name="jakarta.persistence.jdbc.user" value="postgres.vwbelsnquxscdbyakyfz"/>
             <property name="jakarta.persistence.jdbc.password" value="trafficlightiot123"/>
 
             <!-- Hibernate Settings -->
