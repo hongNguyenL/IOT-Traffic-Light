@@ -34,15 +34,16 @@
             <button onclick="showSection('security')" id="nav-security"><span class="icon">📸</span><span class="text">Violations</span></button>
         </div>
         <div class="logout-container">
-            <button onclick="location.reload()" class="btn-danger"><span class="icon">🚪</span><span class="text">Logout</span></button>
+            <button onclick="handleLogout()" class="btn-danger"><span class="icon">🚪</span><span class="text">Logout</span></button>
         </div>
     </div>
     <div class="main">
         <div id="dashboard" class="section">
             <div class="card" style="text-align:center;">
-                <div class="connection-status">
+                <div class="connection-status" style="display: flex; align-items: center;">
                     <div id="status-dot" class="status-dot"></div>
                     <span id="conn-text" style="color:var(--text-muted); font-size: 0.85rem; font-weight: 600;">CONNECTING...</span>
+                    <button onclick="toggleVirtualMode()" id="btn-virtual" class="btn-mode" style="margin-left:auto; padding: 6px 12px; font-size: 0.8rem; background: #8b5cf6; color: white;">Enable Virtual Mode</button>
                 </div>
 
                 <div class="traffic-container">
@@ -104,13 +105,21 @@
                     </div>
                     <div style="display: flex; gap: 0.5rem; align-items: center;">
                         <input type="date" id="search-date" class="auth-card" style="margin: 0; padding: 0.4rem 0.8rem; font-size: 0.9rem; width: auto;">
-                        <button onclick="timKiemTheoNgay()" class="btn-mode btn-primary">🔍 Filter</button>
+                        <input type="text" id="search-plate" class="auth-card" placeholder="License Plate" style="margin: 0; padding: 0.4rem 0.8rem; font-size: 0.9rem; width: 120px;">
+                        <select id="search-type" class="auth-card" style="margin: 0; padding: 0.4rem 0.8rem; font-size: 0.9rem; width: auto; background: white;">
+                            <option value="">All Types</option>
+                            <option value="Car">Car</option>
+                            <option value="Motorbike">Motorbike</option>
+                            <option value="Truck">Truck</option>
+                            <option value="Bus">Bus</option>
+                        </select>
+                        <button onclick="filterViolations()" class="btn-mode btn-primary">🔍 Filter</button>
                         <button onclick="hienTatCaAnh()" class="btn-mode" style="background: var(--secondary); color: white;">🔄 All</button>
                     </div>
                 </div>
                 <div class="violation-container">
                     <c:forEach items="${listV}" var="v">
-                        <div class="violation-card" data-date="${v.violationTime}">
+                        <div class="violation-card" data-date="${v.violationTime}" data-plate="${v.licensePlate}" data-type="${v.vehicleType}">
                             <img src="${v.imageUrl}" onclick="moAnhPhongTo('${v.imageUrl}', '${v.violationTime}', '${v.licensePlate}', '${v.vehicleType}', '${v.severityLevel}')" onerror="this.src='https://placehold.co/400x300?text=No+Image'">
                             <div class="info">
                                 <h4>🚗 ${v.licensePlate}</h4>
@@ -118,6 +127,7 @@
                                     <span>Type: ${v.vehicleType}</span>
                                     <span>Time: ${v.violationTime}</span>
                                 </div>
+                                <button onclick="deleteViolation(${v.violationId})" class="btn-danger" style="margin-top: 8px; padding: 4px 8px; font-size: 0.8rem; width: 100%;">🗑️ Delete</button>
                             </div>
                         </div>
                     </c:forEach>
@@ -146,6 +156,8 @@
     let isAdjusting = false;
     let currentMainColor1 = "", currentMainColor2 = "";
     let isConnected = false;
+    let isVirtualMode = false;
+    let vPhase = 1;
 
     function showSection(id) {
         document.querySelectorAll('.section').forEach(sec => sec.style.display = 'none');
@@ -155,6 +167,9 @@
         document.querySelectorAll('.sidebar button').forEach(btn => btn.classList.remove('active'));
         const activeBtn = document.getElementById('nav-' + id);
         if (activeBtn) activeBtn.classList.add('active');
+        
+        // Save section state to URL hash
+        window.location.hash = id;
     }
 
     /* --- LOGIC DASHBOARD & HEARTBEAT (ĐÃ KHỚP FILE STATUS) --- */
@@ -168,69 +183,78 @@
         try {
 
             const res = await fetch('status_api.jsp');
-            const txt = (await res.text()).trim().toUpperCase();
+            let txt = (await res.text()).trim().toUpperCase();
+            
+            let isLocked = false;
+            if (txt.includes("|LOCKED")) {
+                 isLocked = true;
+                 txt = txt.replace("|LOCKED", "");
+            } else if (txt.includes("|FREE")) {
+                 txt = txt.replace("|FREE", "");
+            }
+            
+            const btnS = document.getElementById('btn-start');
+            if (isLocked) {
+                btnS.disabled = true;
+                btnS.innerText = "Locked: User Adjusting";
+                btnS.style.opacity = 0.5;
+                btnS.style.cursor = "not-allowed";
+                document.getElementById('mode-badge').style.display = 'block';
+                document.getElementById('mode-badge').innerText = "[ ANOTHER USER IS ADJUSTING SETTINGS ]";
+            } else if (btnS.disabled) {
+                btnS.disabled = false;
+                btnS.innerText = "Start Adjusting";
+                btnS.style.opacity = 1;
+                btnS.style.cursor = "pointer";
+                document.getElementById('mode-badge').style.display = 'none';
+            }
 
             const dot = document.getElementById('status-dot');
             const connText = document.getElementById('conn-text');
-            const statusDisplay = document.getElementById('status-display');
 
-            // mất kết nối
-            if (txt === "LOST CONNECTION") {
-                setOfflineUI(dot, connText, statusDisplay);
-            }
-
-            // chờ ESP32
-            else if (txt.includes("WAITING FOR ESP32")) {
-                isConnected = true;
-                dot.className = "status-dot online";
-                connText.innerText = "SERVER ONLINE - ĐANG ĐỢI ESP32...";
-                connText.style.color = "#f59e0b";
-            }
-
-            // trạng thái bình thường
-            else {
-
-                setOnlineUI(dot, connText);
-
-                // Parse status for D1 and D2
-                // Expected format: "D1: XANH, D2: DO" or similar
-                let color1 = "", color2 = "";
-
-                if (txt.includes("D1: XANH")) color1 = "GREEN";
-                else if (txt.includes("D1: VANG")) color1 = "YELLOW";
-                else if (txt.includes("D1: DO")) color1 = "RED";
-
-                if (txt.includes("D2: XANH")) color2 = "GREEN";
-                else if (txt.includes("D2: VANG")) color2 = "YELLOW";
-                else if (txt.includes("D2: DO")) color2 = "RED";
-
-                // Update UI for Light 1
-                if (color1 && color1 !== currentMainColor1) {
-                    currentMainColor1 = color1;
-                    document.querySelectorAll('[id^="light1-"]').forEach(l => l.classList.remove('active', 'blinking-red'));
-                    document.getElementById('light1-' + color1.toLowerCase()).classList.add('active');
-                    document.getElementById('status1-display').innerText = color1 + " LIGHT";
-                    timeLeft1 = config[color1];
+            if (!isVirtualMode) {
+                // mất kết nối
+                if (txt === "LOST CONNECTION") {
+                    setOfflineUI(dot, connText);
                 }
-
-                // Update UI for Light 2
-                if (color2 && color2 !== currentMainColor2) {
-                    currentMainColor2 = color2;
-                    document.querySelectorAll('[id^="light2-"]').forEach(l => l.classList.remove('active', 'blinking-red'));
-                    document.getElementById('light2-' + color2.toLowerCase()).classList.add('active');
-                    document.getElementById('status2-display').innerText = color2 + " LIGHT";
-                    timeLeft2 = config[color2];
+    
+                // chờ ESP32
+                else if (txt.includes("WAITING FOR ESP32")) {
+                    isConnected = true;
+                    dot.className = "status-dot online";
+                    connText.innerText = "SERVER ONLINE - ĐANG ĐỢI ESP32...";
+                    connText.style.color = "#f59e0b";
+                }
+    
+                // trạng thái bình thường
+                else {
+    
+                    setOnlineUI(dot, connText);
+    
+                    // Parse status for D1 and D2
+                    // Expected format: "D1: XANH, D2: DO" or similar
+                    let color1 = "", color2 = "";
+    
+                    if (txt.includes("D1: XANH") || txt.includes("D1: GREEN")) color1 = "GREEN";
+                    else if (txt.includes("D1: VANG") || txt.includes("D1: YELLOW")) color1 = "YELLOW";
+                    else if (txt.includes("D1: DO") || txt.includes("D1: RED")) color1 = "RED";
+    
+                    if (txt.includes("D2: XANH") || txt.includes("D2: GREEN")) color2 = "GREEN";
+                    else if (txt.includes("D2: VANG") || txt.includes("D2: YELLOW")) color2 = "YELLOW";
+                    else if (txt.includes("D2: DO") || txt.includes("D2: RED")) color2 = "RED";
+    
+                    updateLightUI(1, color1);
+                    updateLightUI(2, color2);
                 }
             }
 
         } catch (e) {
-
-            setOfflineUI(
-                document.getElementById('status-dot'),
-                document.getElementById('conn-text'),
-                document.getElementById('status-display')
-            );
-
+            if (!isVirtualMode) {
+                setOfflineUI(
+                    document.getElementById('status-dot'),
+                    document.getElementById('conn-text')
+                );
+            }
         }
 
         // gọi lại sau khi request xong
@@ -238,7 +262,7 @@
     }
 
 
-    function setOfflineUI(dot, connText, statusDisplay) {
+    function setOfflineUI(dot, connText) {
         isConnected = false;
         dot.className = "status-dot offline";
         connText.innerText = "MẤT KẾT NỐI VỚI THIẾT BỊ";
@@ -258,6 +282,61 @@
         connText.innerText = "THIẾT BỊ ĐANG ONLINE";
         connText.style.color = "#10b981";
     }
+    
+    function updateLightUI(idx, color) {
+        if (!color) return;
+        if (idx === 1 && color !== currentMainColor1) {
+            currentMainColor1 = color;
+            document.querySelectorAll('[id^="light1-"]').forEach(l => l.classList.remove('active', 'blinking-red'));
+            document.getElementById('light1-' + color.toLowerCase()).classList.add('active');
+            document.getElementById('status1-display').innerText = color + " LIGHT";
+            timeLeft1 = config[color];
+        }
+        if (idx === 2 && color !== currentMainColor2) {
+            currentMainColor2 = color;
+            document.querySelectorAll('[id^="light2-"]').forEach(l => l.classList.remove('active', 'blinking-red'));
+            document.getElementById('light2-' + color.toLowerCase()).classList.add('active');
+            document.getElementById('status2-display').innerText = color + " LIGHT";
+            timeLeft2 = config[color];
+        }
+    }
+    
+    function toggleVirtualMode() {
+        isVirtualMode = !isVirtualMode;
+        const btn = document.getElementById('btn-virtual');
+        if (isVirtualMode) {
+            btn.innerText = "Disable Virtual Mode";
+            btn.style.background = "#ef4444";
+            vPhase = 1;
+            setVirtualLightState();
+        } else {
+            btn.innerText = "Enable Virtual Mode";
+            btn.style.background = "#8b5cf6";
+            timeLeft1 = 0; timeLeft2 = 0;
+            currentMainColor1 = ""; currentMainColor2 = "";
+        }
+    }
+
+    function setVirtualLightState() {
+        if (!isVirtualMode) return;
+        
+        let c1, c2, t;
+        if (vPhase === 1) { c1 = "GREEN"; c2 = "RED"; t = config.GREEN; }
+        else if (vPhase === 2) { c1 = "YELLOW"; c2 = "RED"; t = config.YELLOW; }
+        else if (vPhase === 3) { c1 = "RED"; c2 = "GREEN"; t = config.GREEN; }
+        else if (vPhase === 4) { c1 = "RED"; c2 = "YELLOW"; t = config.YELLOW; }
+        
+        updateLightUI(1, c1);
+        updateLightUI(2, c2);
+        timeLeft1 = t;
+        timeLeft2 = t;
+        
+        const dot = document.getElementById('status-dot');
+        const connText = document.getElementById('conn-text');
+        dot.className = "status-dot online";
+        connText.innerText = "VIRTUAL MODE ACTIVE";
+        connText.style.color = "#8b5cf6";
+    }
 
     /* --- LOGIC CẤU HÌNH & SECURITY GIỮ NGUYÊN --- */
     async function toggleAdjustMode(start) {
@@ -265,10 +344,17 @@
         const btnF = document.getElementById('btn-finish');
         const box = document.getElementById('input-fields');
         if (start) {
+            const lockRes = await fetch('set_adjust_status.jsp?status=true');
+            const lockTxt = await lockRes.text();
+            if (lockTxt.includes('LOCKED')) {
+                alert("Another user is currently adjusting settings!");
+                return;
+            }
             isAdjusting = true;
             btnS.style.display = 'none'; btnF.style.display = 'inline-block';
             box.style.opacity = '1'; box.style.pointerEvents = 'auto';
-            await fetch('update_config.jsp?g=0&y=0&r=0');
+            document.getElementById('mode-badge').style.display = 'block';
+            document.getElementById('mode-badge').innerText = "[ ADJUSTING MODE ACTIVE ]";
         } else {
             const gVal = document.getElementById('g').value;
             const yVal = document.getElementById('y').value;
@@ -286,25 +372,54 @@
 
                 if (txt.includes("OK")) {
                     config.GREEN = parseInt(gVal); config.YELLOW = parseInt(yVal); config.RED = parseInt(rVal);
-                    timeLeft1 = config[currentMainColor1];
-                    timeLeft2 = config[currentMainColor2];
+                    if (isVirtualMode) {
+                         // Apply instantly in virtual mode
+                         setVirtualLightState();
+                    } else {
+                         timeLeft1 = config[currentMainColor1];
+                         timeLeft2 = config[currentMainColor2];
+                    }
 
                     isAdjusting = false;
                     btnS.style.display = 'inline-block'; btnF.style.display = 'none';
                     box.style.opacity = '0.5'; box.style.pointerEvents = 'none';
+                    document.getElementById('mode-badge').style.display = 'none';
+                    await fetch('set_adjust_status.jsp?status=false');
                     alert("Thành công!");
                 }
             } catch (e) { alert("Lỗi kết nối!"); }
         }
     }
 
-    function timKiemTheoNgay() {
+    function filterViolations() {
         const d = document.getElementById('search-date').value;
+        const p = document.getElementById('search-plate').value.toLowerCase();
+        const t = document.getElementById('search-type').value.toLowerCase();
+        
         document.querySelectorAll('.violation-card').forEach(c => {
-            c.style.display = c.getAttribute('data-date').includes(d) ? 'block' : 'none';
+            const cardDate = c.getAttribute('data-date') || "";
+            const cardPlate = (c.getAttribute('data-plate') || "").toLowerCase();
+            const cardType = (c.getAttribute('data-type') || "").toLowerCase();
+            
+            const matchDate = d === "" || cardDate.includes(d);
+            const matchPlate = p === "" || cardPlate.includes(p);
+            const matchType = t === "" || cardType === t;
+            
+            c.style.display = (matchDate && matchPlate && matchType) ? 'block' : 'none';
         });
     }
-    function hienTatCaAnh() { document.querySelectorAll('.violation-card').forEach(c => c.style.display = 'block'); }
+    function hienTatCaAnh() { 
+        document.getElementById('search-date').value = "";
+        document.getElementById('search-plate').value = "";
+        document.getElementById('search-type').value = "";
+        document.querySelectorAll('.violation-card').forEach(c => c.style.display = 'block'); 
+    }
+    
+    function deleteViolation(id) {
+        if(confirm("Are you sure you want to delete this violation?")) {
+            window.location.href = "deleteViolation?id=" + id;
+        }
+    }
     function moAnhPhongTo(src, t, p, vtype, type) {
         document.getElementById('secModalImg').src = src;
         document.getElementById('modalPlate').innerText = p;
@@ -322,11 +437,29 @@
         const isLocalAdmin = (u === localStorage.getItem('adminUser') && p === localStorage.getItem('adminPass'));
         
         if (isAdmin || isLocalAdmin) {
-            document.getElementById('auth-container').style.display = 'none';
-            document.getElementById('admin-panel').style.display = 'block';
-            fetchStatus();
-            setInterval(() => {
-                if (!isAdjusting && isConnected) {
+            sessionStorage.setItem('adminLoggedIn', 'true');
+            startAdminSession();
+        } else alert("Sai tài khoản!");
+    }
+
+    function startAdminSession() {
+        document.getElementById('auth-container').style.display = 'none';
+        document.getElementById('admin-panel').style.display = 'block';
+        fetchStatus();
+        setInterval(() => {
+            if (!isAdjusting) {
+                if (isVirtualMode) {
+                    if (timeLeft1 > 0) timeLeft1--;
+                    if (timeLeft2 > 0) timeLeft2--;
+                    
+                    if (timeLeft1 <= 0 && timeLeft2 <= 0) {
+                        vPhase++;
+                        if (vPhase > 4) vPhase = 1;
+                        setVirtualLightState();
+                    }
+                    document.getElementById('timer1-display').innerText = timeLeft1 + "s";
+                    document.getElementById('timer2-display').innerText = timeLeft2 + "s";
+                } else if (isConnected) {
                     if (timeLeft1 > 0 && !document.getElementById('light1-red').classList.contains('blinking-red')) {
                         timeLeft1--;
                     }
@@ -336,9 +469,30 @@
                     document.getElementById('timer1-display').innerText = timeLeft1 + "s";
                     document.getElementById('timer2-display').innerText = timeLeft2 + "s";
                 }
-            }, 1000);
-        } else alert("Sai tài khoản!");
+            }
+        }, 1000);
     }
+    
+    function handleLogout() {
+        sessionStorage.removeItem('adminLoggedIn');
+        location.reload();
+    }
+    
+    window.addEventListener('DOMContentLoaded', () => {
+        if (sessionStorage.getItem('adminLoggedIn') === 'true') {
+             startAdminSession();
+             
+             // If we're already logged in, show the last visited section or dashboard
+             const hash = window.location.hash.replace('#', '') || 'dashboard';
+             showSection(hash);
+        }
+    });
+    
+    window.addEventListener('beforeunload', function (e) {
+        if (isAdjusting) {
+            navigator.sendBeacon('set_adjust_status.jsp?status=false');
+        }
+    });
 </script>
 </body>
 </html>

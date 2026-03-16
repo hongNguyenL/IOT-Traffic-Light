@@ -15,5 +15,8 @@
         status = "CONNECTING...";
     }
     
-    out.print(status.trim());
+    boolean isLocked = Esp32ServerListener.isAdjustingTime && (currentTime - Esp32ServerListener.adjustTimeStart < 60000);
+    String lockStatus = isLocked ? "|LOCKED" : "|FREE";
+    
+    out.print(status.trim() + lockStatus);
 %>

@@ -21,7 +21,11 @@ public class Esp32ServerListener implements ServletContextListener {
     public static volatile int timeYellow = 2;
     public static volatile int timeRed = 7; 
     
+    public static volatile boolean isAdjustingTime = false;
+    public static volatile long adjustTimeStart = 0;
+    
     private Thread serverThread;
+    private Thread keepAliveThread;
     private ServerSocket serverSocket;
     private ControlLogDAO controlLogDAO = new ControlLogDAO();
 
@@ -80,6 +84,37 @@ public class Esp32ServerListener implements ServletContextListener {
         });
         serverThread.setDaemon(true); 
         serverThread.start();
+
+        // Keep-alive thread to prevent Render container from sleeping
+        keepAliveThread = new Thread(() -> {
+            while (!Thread.currentThread().isInterrupted()) {
+                try {
+                    // Sleep for 10 minutes (600,000 ms)
+                    Thread.sleep(10 * 60 * 1000);
+                    
+                    String urlStr = System.getenv("RENDER_EXTERNAL_URL");
+                    if (urlStr == null || urlStr.isEmpty()) {
+                        urlStr = "http://localhost:8080/"; 
+                    }
+                    
+                    java.net.URL url = new java.net.URL(urlStr);
+                    java.net.HttpURLConnection con = (java.net.HttpURLConnection) url.openConnection();
+                    con.setRequestMethod("GET");
+                    con.setConnectTimeout(5000);
+                    con.setReadTimeout(5000);
+                    int responseCode = con.getResponseCode();
+                    System.out.println("Keep-Alive Ping to " + urlStr + " returned status: " + responseCode);
+                    
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                } catch (Exception e) {
+                    System.err.println("Keep-Alive Ping Error: " + e.getMessage());
+                }
+            }
+        });
+        keepAliveThread.setDaemon(true);
+        keepAliveThread.start();
     }
 
     @Override
@@ -88,6 +123,7 @@ public class Esp32ServerListener implements ServletContextListener {
         try {
             if (serverSocket != null) serverSocket.close();
             if (serverThread != null) serverThread.interrupt();
+            if (keepAliveThread != null) keepAliveThread.interrupt();
         } catch (Exception e) {
             e.printStackTrace();
         }

@@ -29,6 +29,30 @@ public class ViolationDAO {
         return list;
     }
     
+    public boolean deleteViolation(int id) {
+        EntityManager em = JpaUtils.getEntityManagerFactory().createEntityManager();
+        boolean result = false;
+        try {
+            em.getTransaction().begin();
+            Violation v = em.find(Violation.class, id);
+            if (v != null) {
+                em.remove(v);
+                result = true;
+            }
+            em.getTransaction().commit();
+        } catch (Exception e) {
+            e.printStackTrace();
+            if (em.getTransaction().isActive()) {
+                em.getTransaction().rollback();
+            }
+        } finally {
+            if (em != null && em.isOpen()) {
+                em.close();
+            }
+        }
+        return result;
+    }
+    
     // Proper way to close EMF when application shuts down (optional but recommended)
     public static void closeEntityManagerFactory() {
         // Get the EntityManagerFactory from JpaUtils to close it
