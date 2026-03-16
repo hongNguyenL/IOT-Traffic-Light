@@ -61,4 +61,24 @@ public class ViolationDAO {
             emf.close();
         }
     }
+    
+    public boolean save(Violation violation) {
+        EntityManager em = JpaUtils.getEntityManagerFactory().createEntityManager();
+        try {
+            em.getTransaction().begin(); // Bắt đầu giao dịch
+            em.persist(violation);       // Đưa đối tượng vào trạng thái lưu trữ
+            em.getTransaction().commit(); // Xác nhận lưu vào DB
+            return true;
+        } catch (Exception e) {
+            if (em.getTransaction().isActive()) {
+                em.getTransaction().rollback(); // Hoàn tác nếu có lỗi xảy ra
+            }
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (em != null && em.isOpen()) {
+                em.close();
+            }
+        }
+    }
 }

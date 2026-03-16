@@ -11,3 +11,5 @@ F:\Code\IoT\src\main\java\controller\AdminServlet.java
 F:\Code\IoT\src\main\java\Esp32Server\Esp32ServerListener.java
 F:\Code\IoT\src\main\java\dao\ViolationDAO.java
 F:\Code\IoT\src\main\java\dao\JpaUtils.java
+F:\Code\IoT\src\main\java\service\SupabaseService.java
+F:\Code\IoT\src\main\java\controller\UploadServlet.java
