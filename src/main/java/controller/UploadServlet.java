@@ -20,13 +20,31 @@ public class UploadServlet extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response) 
             throws ServletException, IOException {
         
-        // 1. Nhận dữ liệu nhị phân từ ESP32-CAM (sử dụng getInputStream() trực tiếp thay vì getPart if possible)
-        try (InputStream inputStream = request.getInputStream()) {
-            byte[] imageBytes = inputStream.readAllBytes();
+        byte[] imageBytes = null;
+        String contentType = request.getContentType();
+
+        try {
+            if (contentType != null && contentType.startsWith("multipart/form-data")) {
+                // Handle as Multipart
+                jakarta.servlet.http.Part filePart = request.getPart("imageFile"); // Assuming field name is imageFile
+                if (filePart == null) {
+                    filePart = request.getParts().iterator().next(); // Take first part if name is unknown
+                }
+                
+                if (filePart != null) {
+                    try (InputStream is = filePart.getInputStream()) {
+                        imageBytes = is.readAllBytes();
+                    }
+                }
+            } else {
+                // Handle as Raw Binary POST
+                try (InputStream inputStream = request.getInputStream()) {
+                    imageBytes = inputStream.readAllBytes();
+                }
+            }
 
             if (imageBytes != null && imageBytes.length > 0) {
                 System.out.println(">>> Nhan anh tu ESP32: " + imageBytes.length + " bytes");
-
                 // 2. Upload len Supabase Storage
                 String imageUrl = SupabaseService.upload(imageBytes);
 

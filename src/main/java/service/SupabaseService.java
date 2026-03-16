@@ -35,8 +35,8 @@ public class SupabaseService {
         try (Response response = client.newCall(request).execute()) {
             if (response.isSuccessful()) {
                 System.out.println(">>> [Cloud] Upload thanh cong: " + fileName);
-                // Trả về link công khai để lưu vào Database
-                return fullUrl;
+                // Trả về link công khai để có thể xem được trên Dashboard (phải có /public/)
+                return "https://vwbelsnquxscdbyakyfz.supabase.co/storage/v1/object/public/violation/" + fileName;
             } else {
                 String errorBody = response.body() != null ? response.body().string() : "No error body";
                 System.err.println(">>> [Cloud] Loi: " + response.code() + " - " + errorBody);

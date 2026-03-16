@@ -1,6 +1,7 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ page import="java.sql.*, java.util.List, dao.ViolationDAO, model.Violation, Esp32Server.Esp32ServerListener" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="fmt" uri="jakarta.tags.fmt" %>
 <%
     // listV is now loaded by AdminServlet and passed as a request attribute
 %>
@@ -119,7 +120,8 @@
                 </div>
                 <div class="violation-container">
                     <c:forEach items="${listV}" var="v">
-                        <div class="violation-card" data-date="${v.violationTime}" data-plate="${v.licensePlate}" data-type="${v.vehicleType}">
+                        <fmt:formatDate value="${v.violationTime}" pattern="yyyy-MM-dd HH:mm:ss" var="formattedDate" />
+                        <div class="violation-card" data-date="${formattedDate}" data-plate="${v.licensePlate}" data-type="${v.vehicleType}">
                             <img src="${v.imageUrl}" onclick="moAnhPhongTo('${v.imageUrl}', '${v.violationTime}', '${v.licensePlate}', '${v.vehicleType}', '${v.severityLevel}')" onerror="this.src='https://placehold.co/400x300?text=No+Image'">
                             <div class="info">
                                 <h4>🚗 ${v.licensePlate}</h4>
@@ -396,6 +398,9 @@
         const p = document.getElementById('search-plate').value.toLowerCase();
         const t = document.getElementById('search-type').value.toLowerCase();
         
+        console.log("Filtering Violations -> Date:", d, "| Plate:", p, "| Type:", t);
+        
+        let count = 0;
         document.querySelectorAll('.violation-card').forEach(c => {
             const cardDate = c.getAttribute('data-date') || "";
             const cardPlate = (c.getAttribute('data-plate') || "").toLowerCase();
@@ -405,8 +410,14 @@
             const matchPlate = p === "" || cardPlate.includes(p);
             const matchType = t === "" || cardType === t;
             
-            c.style.display = (matchDate && matchPlate && matchType) ? 'block' : 'none';
+            if (matchDate && matchPlate && matchType) {
+                c.style.display = 'block';
+                count++;
+            } else {
+                c.style.display = 'none';
+            }
         });
+        console.log("Filter complete. Matches found:", count);
     }
     function hienTatCaAnh() { 
         document.getElementById('search-date').value = "";
@@ -417,10 +428,12 @@
     
     function deleteViolation(id) {
         if(confirm("Are you sure you want to delete this violation?")) {
+            console.log("Deleting violation with ID:", id);
             window.location.href = "deleteViolation?id=" + id;
         }
     }
     function moAnhPhongTo(src, t, p, vtype, type) {
+        console.log("Viewing Violation Details:", { plate: p, vehicle: vtype, time: t, violation: type });
         document.getElementById('secModalImg').src = src;
         document.getElementById('modalPlate').innerText = p;
         document.getElementById('modalVehicleType').innerText = vtype;
@@ -479,6 +492,12 @@
     }
     
     window.addEventListener('DOMContentLoaded', () => {
+        const violations = document.querySelectorAll('.violation-card');
+        console.log("Dashboard Loaded. Total violations in DOM:", violations.length);
+        if (violations.length > 0) {
+            console.log("Sample License Plates:", [...violations].slice(0, 5).map(c => c.getAttribute('data-plate')));
+        }
+
         if (sessionStorage.getItem('adminLoggedIn') === 'true') {
              startAdminSession();
              
