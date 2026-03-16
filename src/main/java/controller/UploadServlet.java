@@ -66,19 +66,23 @@ public class UploadServlet extends HttpServlet {
                     boolean isSaved = dao.save(violation);
 
                     if (isSaved) {
-                        System.out.println(">>> [SUCCESS] Da luu vao Database!");
+                        System.out.println(">>> [SUCCESS] Da luu vao Database! ImageURL: " + imageUrl);
                         response.setStatus(HttpServletResponse.SC_OK);
                         response.getWriter().write("Success: Captured and Saved!");
                     } else {
+                        System.err.println(">>> [ERROR] DAO save() returned false - check DB connection and entity state.");
                         response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Database save failed");
                     }
                 } else {
+                    System.err.println(">>> [ERROR] Supabase upload returned null - image was NOT uploaded to cloud.");
                     response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Cloud upload failed");
                 }
             } else {
+                System.err.println(">>> [ERROR] imageBytes is null or empty - ESP32 may have sent no data.");
                 response.sendError(HttpServletResponse.SC_BAD_REQUEST, "No image data received");
             }
         } catch (Exception e) {
+            System.err.println(">>> [EXCEPTION] Server Error in UploadServlet: " + e.getMessage());
             e.printStackTrace();
             response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Server Error: " + e.getMessage());
         }

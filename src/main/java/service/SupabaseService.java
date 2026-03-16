@@ -19,9 +19,11 @@ public class SupabaseService {
         // Tạo tên file ngẫu nhiên theo thời gian
         String fileName = "violation_" + System.currentTimeMillis() + ".jpg";
         String fullUrl = SUPABASE_URL + fileName;
+        System.out.println(">>> [Supabase] Attempting upload to: " + fullUrl);
 
         // Tạo Body chứa dữ liệu ảnh nhị phân
         RequestBody body = RequestBody.create(imageBytes, MediaType.parse("image/jpeg"));
+        System.out.println(">>> [Supabase] Image size: " + imageBytes.length + " bytes");
 
         // Xây dựng yêu cầu POST lên Supabase
         Request request = new Request.Builder()
