@@ -28,6 +28,9 @@ public class Violation {
     @Column(name = "SeverityLevel", nullable = false, length = 50)
     private String severityLevel;
 
+    @Column(name = "Confident")
+    private Double confident;
+
     public Violation() {}
 
     // Getters and Setters
@@ -48,4 +51,7 @@ public class Violation {
 
     public String getSeverityLevel() { return severityLevel; }
     public void setSeverityLevel(String severityLevel) { this.severityLevel = severityLevel; }
+
+    public Double getConfident() { return confident; }
+    public void setConfident(Double confident) { this.confident = confident; }
 }

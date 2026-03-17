@@ -359,6 +359,13 @@ body {
     width: 100%;
     position: relative;
     box-shadow: var(--shadow-lg);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-content > img {
+    max-height: 50vh;
+    object-fit: contain;
 }
 
 @keyframes blink { 0% { opacity:1; } 50% { opacity:0.3; } 100% { opacity:1; } }

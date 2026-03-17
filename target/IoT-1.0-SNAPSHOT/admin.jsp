@@ -123,12 +123,30 @@
                     <c:forEach items="${listV}" var="v">
                         <fmt:formatDate value="${v.violationTime}" pattern="yyyy-MM-dd HH:mm:ss" var="formattedDate" />
                         <div class="violation-card" data-date="${formattedDate}" data-plate="${v.licensePlate}" data-type="${v.vehicleType}">
-                            <img src="${v.imageUrl}" onclick="moAnhPhongTo('${v.imageUrl}', '${v.violationTime}', '${v.licensePlate}', '${v.vehicleType}', '${v.severityLevel}')" onerror="this.src='https://placehold.co/400x300?text=No+Image'">
+                            <img src="${v.imageUrl}" onclick="moAnhPhongTo('${v.imageUrl}', '${v.violationTime}', '${v.licensePlate}', '${v.vehicleType}', '${v.severityLevel}', '${v.confident}')" onerror="this.src='https://placehold.co/400x300?text=No+Image'">
                             <div class="info">
                                 <h4>🚗 ${v.licensePlate}</h4>
                                 <div style="font-size: 0.8rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 2px;">
                                     <span>Type: ${v.vehicleType}</span>
                                     <span>Time: ${v.violationTime}</span>
+                                    <c:choose>
+                                        <c:when test="${not empty v.confident}">
+                                            <c:choose>
+                                                <c:when test="${v.confident >= 80}">
+                                                    <span style="color: #10b981; font-weight: 600;">🎯 Confidence: <fmt:formatNumber value="${v.confident}" maxFractionDigits="1"/>%</span>
+                                                </c:when>
+                                                <c:when test="${v.confident >= 50}">
+                                                    <span style="color: #f59e0b; font-weight: 600;">🎯 Confidence: <fmt:formatNumber value="${v.confident}" maxFractionDigits="1"/>%</span>
+                                                </c:when>
+                                                <c:otherwise>
+                                                    <span style="color: #ef4444; font-weight: 600;">🎯 Confidence: <fmt:formatNumber value="${v.confident}" maxFractionDigits="1"/>%</span>
+                                                </c:otherwise>
+                                            </c:choose>
+                                        </c:when>
+                                        <c:otherwise>
+                                            <span style="color: var(--text-muted);">🎯 Confidence: N/A</span>
+                                        </c:otherwise>
+                                    </c:choose>
                                 </div>
                                 <button onclick="deleteViolation(${v.violationId})" class="btn-mode btn-danger" style="margin-top: 8px; width: 100%;">🗑️ Delete</button>
                             </div>
@@ -143,12 +161,13 @@
 <div id="secModal" class="modal-security" onclick="dongAnhPhongTo()">
     <div class="modal-content" onclick="event.stopPropagation()">
         <span style="position:absolute; top:10px; right:20px; font-size:35px; cursor:pointer;" onclick="dongAnhPhongTo()">&times;</span>
-        <img id="secModalImg" src="" style="width:100%; border-radius:8px;">
+        <img id="secModalImg" src="" style="width:100%; max-height:50vh; object-fit:contain; border-radius:8px;">
         <div style="text-align:left; margin-top:15px; border-top:1px solid #eee; padding-top:10px;">
             <p><strong>🚗 Biển số xe:</strong> <span id="modalPlate" style="color:#2563eb; font-weight:bold;"></span></p>
             <p><strong>🚙 Loại xe:</strong> <span id="modalVehicleType" style="color:#2563eb; font-weight:bold;"></span></p>
             <p><strong>🕒 Thời gian:</strong> <span id="modalTime"></span></p>
             <p><strong>⚠️ Loại vi phạm:</strong> <span id="modalType" style="color:#ef4444; font-weight:bold;"></span></p>
+            <p><strong>🎯 Confidence:</strong> <span id="modalConfident" style="font-weight:bold;"></span></p>
         </div>
     </div>
 </div>
