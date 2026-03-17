@@ -55,7 +55,6 @@ public class UploadServlet extends HttpServlet {
                     // Gán các trường bắt buộc (nullable = false)
                     violation.setImageUrl(imageUrl);
                     violation.setViolationTime(new Date()); // Lấy thời gian hiện tại
-                    violation.setSeverityLevel("Normal"); // Giá trị mặc định vì Database yêu cầu NOT NULL
 
                     // Các trường không bắt buộc (Có thể để trống hoặc set mặc định)
                     violation.setLicensePlate("Unknown");

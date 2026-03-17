@@ -123,7 +123,7 @@
                     <c:forEach items="${listV}" var="v">
                         <fmt:formatDate value="${v.violationTime}" pattern="yyyy-MM-dd HH:mm:ss" var="formattedDate" />
                         <div class="violation-card" data-date="${formattedDate}" data-plate="${v.licensePlate}" data-type="${v.vehicleType}">
-                            <img src="${v.imageUrl}" onclick="moAnhPhongTo('${v.imageUrl}', '${v.violationTime}', '${v.licensePlate}', '${v.vehicleType}', '${v.severityLevel}', '${v.confident}')" onerror="this.src='https://placehold.co/400x300?text=No+Image'">
+                            <img src="${v.imageUrl}" onclick="moAnhPhongTo('${v.imageUrl}', '${v.violationTime}', '${v.licensePlate}', '${v.vehicleType}', '${v.confident}')" onerror="this.src='https://placehold.co/400x300?text=No+Image'">
                             <div class="info">
                                 <h4>🚗 ${v.licensePlate}</h4>
                                 <div style="font-size: 0.8rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 2px;">
@@ -166,7 +166,6 @@
             <p><strong>🚗 Biển số xe:</strong> <span id="modalPlate" style="color:#2563eb; font-weight:bold;"></span></p>
             <p><strong>🚙 Loại xe:</strong> <span id="modalVehicleType" style="color:#2563eb; font-weight:bold;"></span></p>
             <p><strong>🕒 Thời gian:</strong> <span id="modalTime"></span></p>
-            <p><strong>⚠️ Loại vi phạm:</strong> <span id="modalType" style="color:#ef4444; font-weight:bold;"></span></p>
             <p><strong>🎯 Confidence:</strong> <span id="modalConfident" style="font-weight:bold;"></span></p>
         </div>
     </div>
@@ -481,13 +480,27 @@
             window.location.href = "deleteAllViolations";
         }
     }
-    function moAnhPhongTo(src, t, p, vtype, type) {
-        console.log("Viewing Violation Details:", { plate: p, vehicle: vtype, time: t, violation: type });
+    function moAnhPhongTo(src, t, p, vtype, conf) {
+        console.log("Viewing Violation Details:", { plate: p, vehicle: vtype, time: t, confidence: conf });
         document.getElementById('secModalImg').src = src;
         document.getElementById('modalPlate').innerText = p;
         document.getElementById('modalVehicleType').innerText = vtype;
         document.getElementById('modalTime').innerText = t;
-        document.getElementById('modalType').innerText = type;
+        
+        let confEl = document.getElementById('modalConfident');
+        if (confEl) {
+            if (conf && conf !== 'null' && conf !== '') {
+                let cVal = parseFloat(conf);
+                confEl.innerText = cVal.toFixed(1) + "%";
+                if (cVal >= 80) confEl.style.color = "#10b981";
+                else if (cVal >= 50) confEl.style.color = "#f59e0b";
+                else confEl.style.color = "#ef4444";
+            } else {
+                confEl.innerText = "N/A";
+                confEl.style.color = "var(--text-muted)";
+            }
+        }
+        
         document.getElementById('secModal').style.display = 'flex';
     }
     function dongAnhPhongTo() { document.getElementById('secModal').style.display = 'none'; }
