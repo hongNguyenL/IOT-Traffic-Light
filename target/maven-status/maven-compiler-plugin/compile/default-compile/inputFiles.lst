@@ -1,6 +1,7 @@
 F:\Code\IoT\src\main\java\com\mycompany\iot\resources\JakartaEE10Resource.java
 F:\Code\IoT\src\main\java\com\mycompany\iot\JakartaRestConfiguration.java
 F:\Code\IoT\src\main\java\TestDB.java
+F:\Code\IoT\src\main\java\controller\DeleteAllViolationsServlet.java
 F:\Code\IoT\src\main\java\dao\TrafficSensorDataDAO.java
 F:\Code\IoT\src\main\java\model\ControlLog.java
 F:\Code\IoT\src\main\java\dao\ControlLogDAO.java

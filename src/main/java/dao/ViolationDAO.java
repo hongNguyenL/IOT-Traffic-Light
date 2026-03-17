@@ -29,15 +29,16 @@ public class ViolationDAO {
         return list;
     }
     
-    public boolean deleteViolation(int id) {
+    // Returns the imageUrl of the deleted violation, or null if not found / failed
+    public String deleteViolation(int id) {
         EntityManager em = JpaUtils.getEntityManagerFactory().createEntityManager();
-        boolean result = false;
+        String imageUrl = null;
         try {
             em.getTransaction().begin();
             Violation v = em.find(Violation.class, id);
             if (v != null) {
+                imageUrl = v.getImageUrl(); // Grab the URL before removing
                 em.remove(v);
-                result = true;
             }
             em.getTransaction().commit();
         } catch (Exception e) {
@@ -50,8 +51,36 @@ public class ViolationDAO {
                 em.close();
             }
         }
-        return result;
+        return imageUrl;
     }
+
+    // Deletes all violations and returns their image URLs for cloud cleanup
+    public List<String> deleteAllViolations() {
+        EntityManager em = JpaUtils.getEntityManagerFactory().createEntityManager();
+        List<String> imageUrls = new ArrayList<>();
+        try {
+            em.getTransaction().begin();
+            List<Violation> allViolations = em.createQuery("SELECT v FROM Violation v", Violation.class).getResultList();
+            for (Violation v : allViolations) {
+                if (v.getImageUrl() != null) {
+                    imageUrls.add(v.getImageUrl());
+                }
+                em.remove(v);
+            }
+            em.getTransaction().commit();
+        } catch (Exception e) {
+            e.printStackTrace();
+            if (em.getTransaction().isActive()) {
+                em.getTransaction().rollback();
+            }
+        } finally {
+            if (em != null && em.isOpen()) {
+                em.close();
+            }
+        }
+        return imageUrls;
+    }
+
     
     // Proper way to close EMF when application shuts down (optional but recommended)
     public static void closeEntityManagerFactory() {

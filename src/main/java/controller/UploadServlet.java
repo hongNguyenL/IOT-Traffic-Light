@@ -13,13 +13,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Date;
 
-@WebServlet(name = "UploadServlet", urlPatterns = {"/upload"})
+@WebServlet(name = "UploadServlet", urlPatterns = { "/upload" })
 @MultipartConfig
 public class UploadServlet extends HttpServlet {
     @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) 
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        
+
         byte[] imageBytes = null;
         String contentType = request.getContentType();
 
@@ -30,7 +30,7 @@ public class UploadServlet extends HttpServlet {
                 if (filePart == null) {
                     filePart = request.getParts().iterator().next(); // Take first part if name is unknown
                 }
-                
+
                 if (filePart != null) {
                     try (InputStream is = filePart.getInputStream()) {
                         imageBytes = is.readAllBytes();
@@ -51,12 +51,12 @@ public class UploadServlet extends HttpServlet {
                 if (imageUrl != null && !imageUrl.isEmpty()) {
                     // 3. Khởi tạo và gán giá trị cho Entity Violation
                     Violation violation = new Violation();
-                    
+
                     // Gán các trường bắt buộc (nullable = false)
                     violation.setImageUrl(imageUrl);
                     violation.setViolationTime(new Date()); // Lấy thời gian hiện tại
-                    violation.setSeverityLevel("Normal");  // Giá trị mặc định vì Database yêu cầu NOT NULL
-                    
+                    violation.setSeverityLevel("Normal"); // Giá trị mặc định vì Database yêu cầu NOT NULL
+
                     // Các trường không bắt buộc (Có thể để trống hoặc set mặc định)
                     violation.setLicensePlate("Unknown");
                     violation.setVehicleType("Detecting...");
@@ -70,7 +70,8 @@ public class UploadServlet extends HttpServlet {
                         response.setStatus(HttpServletResponse.SC_OK);
                         response.getWriter().write("Success: Captured and Saved!");
                     } else {
-                        System.err.println(">>> [ERROR] DAO save() returned false - check DB connection and entity state.");
+                        System.err.println(
+                                ">>> [ERROR] DAO save() returned false - check DB connection and entity state.");
                         response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Database save failed");
                     }
                 } else {

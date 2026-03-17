@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 public class SupabaseService {
-    
+
     // Thông tin dự án của bạn
     private static final String SUPABASE_URL = "https://vwbelsnquxscdbyakyfz.supabase.co/storage/v1/object/violation/";
     private static final String SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3YmVsc25xdXhzY2RieWFreWZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0NDc2MzIsImV4cCI6MjA4OTAyMzYzMn0.AMjhbZsSLL2AzCi-Ex1mANYTjV5pQfp-yXWOk4F4x00";
@@ -47,6 +47,36 @@ public class SupabaseService {
         } catch (IOException e) {
             e.printStackTrace();
             return null;
+        }
+    }
+
+    public static boolean deleteFile(String fileName) {
+        OkHttpClient client = new OkHttpClient.Builder()
+                .connectTimeout(10, TimeUnit.SECONDS)
+                .build();
+
+        // Supabase Storage DELETE endpoint
+        String deleteUrl = SUPABASE_URL + fileName;
+
+        Request request = new Request.Builder()
+                .url(deleteUrl)
+                .delete()
+                .addHeader("apikey", SUPABASE_KEY)
+                .addHeader("Authorization", "Bearer " + SUPABASE_KEY)
+                .build();
+
+        try (Response response = client.newCall(request).execute()) {
+            if (response.isSuccessful()) {
+                System.out.println(">>> [Supabase] File deleted: " + fileName);
+                return true;
+            } else {
+                String errorBody = response.body() != null ? response.body().string() : "No error body";
+                System.err.println(">>> [Supabase] Delete failed: " + response.code() + " - " + errorBody);
+                return false;
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
         }
     }
 }

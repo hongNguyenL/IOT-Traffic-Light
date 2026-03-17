@@ -116,6 +116,7 @@
                         </select>
                         <button onclick="filterViolations()" class="btn-mode btn-primary">🔍 Filter</button>
                         <button onclick="hienTatCaAnh()" class="btn-mode" style="background: var(--secondary); color: white;">🔄 All</button>
+                        <button onclick="deleteAllViolations()" class="btn-mode btn-danger">🗑️ Delete All</button>
                     </div>
                 </div>
                 <div class="violation-container">
@@ -129,7 +130,7 @@
                                     <span>Type: ${v.vehicleType}</span>
                                     <span>Time: ${v.violationTime}</span>
                                 </div>
-                                <button onclick="deleteViolation(${v.violationId})" class="btn-danger" style="margin-top: 8px; padding: 4px 8px; font-size: 0.8rem; width: 100%;">🗑️ Delete</button>
+                                <button onclick="deleteViolation(${v.violationId})" class="btn-mode btn-danger" style="margin-top: 8px; width: 100%;">🗑️ Delete</button>
                             </div>
                         </div>
                     </c:forEach>
@@ -233,8 +234,8 @@
     
                     setOnlineUI(dot, connText);
     
-                    // Parse status for D1 and D2
-                    // Expected format: "D1: XANH, D2: DO" or similar
+                    // Parse color for D1 and D2
+                    // Expected format from ESP32: "D1: XANH, D2: DO, T:5" or similar
                     let color1 = "", color2 = "";
     
                     if (txt.includes("D1: XANH") || txt.includes("D1: GREEN")) color1 = "GREEN";
@@ -244,9 +245,15 @@
                     if (txt.includes("D2: XANH") || txt.includes("D2: GREEN")) color2 = "GREEN";
                     else if (txt.includes("D2: VANG") || txt.includes("D2: YELLOW")) color2 = "YELLOW";
                     else if (txt.includes("D2: DO") || txt.includes("D2: RED")) color2 = "RED";
+
+                    // Parse remaining time from ESP32 message (e.g. "T:5")
+                    // This keeps the timer display synced with the actual hardware countdown
+                    let hwTimer = -1;
+                    const tMatch = txt.match(/T:(\d+)/);
+                    if (tMatch) hwTimer = parseInt(tMatch[1]);
     
-                    updateLightUI(1, color1);
-                    updateLightUI(2, color2);
+                    updateLightUI(1, color1, hwTimer);
+                    updateLightUI(2, color2, hwTimer);
                 }
             }
 
@@ -285,21 +292,35 @@
         connText.style.color = "#10b981";
     }
     
-    function updateLightUI(idx, color) {
+    function updateLightUI(idx, color, hwTimer) {
         if (!color) return;
-        if (idx === 1 && color !== currentMainColor1) {
-            currentMainColor1 = color;
-            document.querySelectorAll('[id^="light1-"]').forEach(l => l.classList.remove('active', 'blinking-red'));
-            document.getElementById('light1-' + color.toLowerCase()).classList.add('active');
-            document.getElementById('status1-display').innerText = color + " LIGHT";
-            timeLeft1 = config[color];
+        if (idx === 1) {
+            if (color !== currentMainColor1) {
+                // Color changed: update the light indicators
+                currentMainColor1 = color;
+                document.querySelectorAll('[id^="light1-"]').forEach(l => l.classList.remove('active', 'blinking-red'));
+                document.getElementById('light1-' + color.toLowerCase()).classList.add('active');
+                document.getElementById('status1-display').innerText = color + " LIGHT";
+                // Seed timer from hardware if available, else fall back to config
+                timeLeft1 = (hwTimer >= 0) ? hwTimer : config[color];
+            } else if (hwTimer >= 0) {
+                // Same color still on: sync timer to hardware value every poll
+                timeLeft1 = hwTimer;
+            }
         }
-        if (idx === 2 && color !== currentMainColor2) {
-            currentMainColor2 = color;
-            document.querySelectorAll('[id^="light2-"]').forEach(l => l.classList.remove('active', 'blinking-red'));
-            document.getElementById('light2-' + color.toLowerCase()).classList.add('active');
-            document.getElementById('status2-display').innerText = color + " LIGHT";
-            timeLeft2 = config[color];
+        if (idx === 2) {
+            if (color !== currentMainColor2) {
+                // Color changed: update the light indicators
+                currentMainColor2 = color;
+                document.querySelectorAll('[id^="light2-"]').forEach(l => l.classList.remove('active', 'blinking-red'));
+                document.getElementById('light2-' + color.toLowerCase()).classList.add('active');
+                document.getElementById('status2-display').innerText = color + " LIGHT";
+                // Seed timer from hardware if available, else fall back to config
+                timeLeft2 = (hwTimer >= 0) ? hwTimer : config[color];
+            } else if (hwTimer >= 0) {
+                // Same color still on: sync timer to hardware value every poll
+                timeLeft2 = hwTimer;
+            }
         }
     }
     
@@ -430,6 +451,15 @@
         if(confirm("Are you sure you want to delete this violation?")) {
             console.log("Deleting violation with ID:", id);
             window.location.href = "deleteViolation?id=" + id;
+        }
+    }
+
+    function deleteAllViolations() {
+        const count = document.querySelectorAll('.violation-card').length;
+        if (count === 0) { alert("No violations to delete."); return; }
+        if (confirm("⚠️ Are you sure you want to DELETE ALL " + count + " violations?\nThis will also remove all images from storage. This cannot be undone!")) {
+            console.log("Deleting ALL violations...");
+            window.location.href = "deleteAllViolations";
         }
     }
     function moAnhPhongTo(src, t, p, vtype, type) {
