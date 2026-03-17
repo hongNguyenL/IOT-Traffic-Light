@@ -91,8 +91,8 @@
                         <input type="number" id="y" value="3" class="auth-card" style="margin: 0; padding: 0.5rem 1rem; text-align: left; max-width: 100px;">
                     </div>
                     <div>
-                        <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--error);">RED LIGHT</label>
-                        <input type="number" id="r" value="15" class="auth-card" style="margin: 0; padding: 0.5rem 1rem; text-align: left; max-width: 100px;">
+                        <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--error);">RED LIGHT (Auto-calculated)</label>
+                        <input type="number" id="r" value="13" class="auth-card" readonly style="margin: 0; padding: 0.5rem 1rem; text-align: left; max-width: 100px; background-color: #f1f5f9; cursor: not-allowed; color: #64748b; font-weight: bold;">
                     </div>
                 </div>
             </div>
@@ -180,29 +180,28 @@
     let isVirtualMode = false;
     let vPhase = 1;
 
+    // --- HÀM TỰ ĐỘNG TÍNH TOÁN ĐÈN ĐỎ ---
+    function autoCalculateRed() {
+        const gVal = parseInt(document.getElementById('g').value) || 0;
+        const yVal = parseInt(document.getElementById('y').value) || 0;
+        document.getElementById('r').value = gVal + yVal;
+    }
+
     function showSection(id) {
         document.querySelectorAll('.section').forEach(sec => sec.style.display = 'none');
         document.getElementById(id).style.display = 'block';
-        
-        // Update sidebar active state
         document.querySelectorAll('.sidebar button').forEach(btn => btn.classList.remove('active'));
         const activeBtn = document.getElementById('nav-' + id);
         if (activeBtn) activeBtn.classList.add('active');
-        
-        // Save section state to URL hash
         window.location.hash = id;
     }
 
-    /* --- LOGIC DASHBOARD & HEARTBEAT (ĐÃ KHỚP FILE STATUS) --- */
     async function fetchStatus() {
-
         if (isAdjusting) {
             setTimeout(fetchStatus, 800);
             return;
         }
-
         try {
-
             const res = await fetch('status_api.jsp');
             let txt = (await res.text()).trim().toUpperCase();
             
@@ -234,70 +233,47 @@
             const connText = document.getElementById('conn-text');
 
             if (!isVirtualMode) {
-                // mất kết nối
                 if (txt === "LOST CONNECTION") {
                     setOfflineUI(dot, connText);
                 }
-    
-                // chờ ESP32
                 else if (txt.includes("WAITING FOR ESP32")) {
                     isConnected = true;
                     dot.className = "status-dot online";
                     connText.innerText = "SERVER ONLINE - ĐANG ĐỢI ESP32...";
                     connText.style.color = "#f59e0b";
                 }
-    
-                // trạng thái bình thường
                 else {
-    
                     setOnlineUI(dot, connText);
-    
-                    // Parse color for D1 and D2
-                    // Expected format from ESP32: "D1: XANH, D2: DO, T:5" or similar
                     let color1 = "", color2 = "";
-    
                     if (txt.includes("D1: XANH") || txt.includes("D1: GREEN")) color1 = "GREEN";
                     else if (txt.includes("D1: VANG") || txt.includes("D1: YELLOW")) color1 = "YELLOW";
                     else if (txt.includes("D1: DO") || txt.includes("D1: RED")) color1 = "RED";
-    
                     if (txt.includes("D2: XANH") || txt.includes("D2: GREEN")) color2 = "GREEN";
                     else if (txt.includes("D2: VANG") || txt.includes("D2: YELLOW")) color2 = "YELLOW";
                     else if (txt.includes("D2: DO") || txt.includes("D2: RED")) color2 = "RED";
 
-                    // Parse remaining time from ESP32 message (e.g. "T:5")
-                    // This keeps the timer display synced with the actual hardware countdown
                     let hwTimer = -1;
                     const tMatch = txt.match(/T:(\d+)/);
                     if (tMatch) hwTimer = parseInt(tMatch[1]);
-    
                     updateLightUI(1, color1, hwTimer);
                     updateLightUI(2, color2, hwTimer);
                 }
             }
-
         } catch (e) {
             if (!isVirtualMode) {
-                setOfflineUI(
-                    document.getElementById('status-dot'),
-                    document.getElementById('conn-text')
-                );
+                setOfflineUI(document.getElementById('status-dot'), document.getElementById('conn-text'));
             }
         }
-
-        // gọi lại sau khi request xong
         setTimeout(fetchStatus, 800);
     }
-
 
     function setOfflineUI(dot, connText) {
         isConnected = false;
         dot.className = "status-dot offline";
         connText.innerText = "MẤT KẾT NỐI VỚI THIẾT BỊ";
         connText.style.color = "#ef4444";
-        
         document.getElementById('status1-display').innerText = "MẤT KẾT NỐI";
         document.getElementById('status2-display').innerText = "MẤT KẾT NỐI";
-        
         document.querySelectorAll('.light').forEach(l => l.classList.remove('active', 'blinking-red'));
         document.getElementById('timer1-display').innerText = "0s";
         document.getElementById('timer2-display').innerText = "0s";
@@ -314,29 +290,23 @@
         if (!color) return;
         if (idx === 1) {
             if (color !== currentMainColor1) {
-                // Color changed: update the light indicators
                 currentMainColor1 = color;
                 document.querySelectorAll('[id^="light1-"]').forEach(l => l.classList.remove('active', 'blinking-red'));
                 document.getElementById('light1-' + color.toLowerCase()).classList.add('active');
                 document.getElementById('status1-display').innerText = color + " LIGHT";
-                // Seed timer from hardware if available, else fall back to config
                 timeLeft1 = (hwTimer >= 0) ? hwTimer : config[color];
             } else if (hwTimer >= 0) {
-                // Same color still on: sync timer to hardware value every poll
                 timeLeft1 = hwTimer;
             }
         }
         if (idx === 2) {
             if (color !== currentMainColor2) {
-                // Color changed: update the light indicators
                 currentMainColor2 = color;
                 document.querySelectorAll('[id^="light2-"]').forEach(l => l.classList.remove('active', 'blinking-red'));
                 document.getElementById('light2-' + color.toLowerCase()).classList.add('active');
                 document.getElementById('status2-display').innerText = color + " LIGHT";
-                // Seed timer from hardware if available, else fall back to config
                 timeLeft2 = (hwTimer >= 0) ? hwTimer : config[color];
             } else if (hwTimer >= 0) {
-                // Same color still on: sync timer to hardware value every poll
                 timeLeft2 = hwTimer;
             }
         }
@@ -360,18 +330,15 @@
 
     function setVirtualLightState() {
         if (!isVirtualMode) return;
-        
         let c1, c2, t;
         if (vPhase === 1) { c1 = "GREEN"; c2 = "RED"; t = config.GREEN; }
         else if (vPhase === 2) { c1 = "YELLOW"; c2 = "RED"; t = config.YELLOW; }
         else if (vPhase === 3) { c1 = "RED"; c2 = "GREEN"; t = config.GREEN; }
         else if (vPhase === 4) { c1 = "RED"; c2 = "YELLOW"; t = config.YELLOW; }
-        
         updateLightUI(1, c1);
         updateLightUI(2, c2);
         timeLeft1 = t;
         timeLeft2 = t;
-        
         const dot = document.getElementById('status-dot');
         const connText = document.getElementById('conn-text');
         dot.className = "status-dot online";
@@ -379,7 +346,6 @@
         connText.style.color = "#8b5cf6";
     }
 
-    /* --- LOGIC CẤU HÌNH & SECURITY GIỮ NGUYÊN --- */
     async function toggleAdjustMode(start) {
         const btnS = document.getElementById('btn-start');
         const btnF = document.getElementById('btn-finish');
@@ -396,31 +362,23 @@
             box.style.opacity = '1'; box.style.pointerEvents = 'auto';
             document.getElementById('mode-badge').style.display = 'block';
             document.getElementById('mode-badge').innerText = "[ ADJUSTING MODE ACTIVE ]";
+            autoCalculateRed(); // Tính toán lại khi bắt đầu sửa
         } else {
             const gVal = document.getElementById('g').value;
             const yVal = document.getElementById('y').value;
             const rVal = document.getElementById('r').value;
             if (!gVal || !yVal || !rVal) { alert("Vui lòng nhập số!"); return; }
             try {
-                console.log("Values send:", gVal, yVal, rVal);  
                 const url = "update_config.jsp?g=" + gVal + "&y=" + yVal + "&r=" + rVal + "&t=" + Date.now();
                 const res = await fetch(url);
-
-
                 const txt = await res.text();
-
-                console.log("Server response:", txt);
-
                 if (txt.includes("OK")) {
                     config.GREEN = parseInt(gVal); config.YELLOW = parseInt(yVal); config.RED = parseInt(rVal);
-                    if (isVirtualMode) {
-                         // Apply instantly in virtual mode
-                         setVirtualLightState();
-                    } else {
-                         timeLeft1 = config[currentMainColor1];
-                         timeLeft2 = config[currentMainColor2];
+                    if (isVirtualMode) setVirtualLightState();
+                    else {
+                        timeLeft1 = config[currentMainColor1];
+                        timeLeft2 = config[currentMainColor2];
                     }
-
                     isAdjusting = false;
                     btnS.style.display = 'inline-block'; btnF.style.display = 'none';
                     box.style.opacity = '0.5'; box.style.pointerEvents = 'none';
@@ -436,28 +394,17 @@
         const d = document.getElementById('search-date').value;
         const p = document.getElementById('search-plate').value.toLowerCase();
         const t = document.getElementById('search-type').value.toLowerCase();
-        
-        console.log("Filtering Violations -> Date:", d, "| Plate:", p, "| Type:", t);
-        
-        let count = 0;
         document.querySelectorAll('.violation-card').forEach(c => {
             const cardDate = c.getAttribute('data-date') || "";
             const cardPlate = (c.getAttribute('data-plate') || "").toLowerCase();
             const cardType = (c.getAttribute('data-type') || "").toLowerCase();
-            
             const matchDate = d === "" || cardDate.includes(d);
             const matchPlate = p === "" || cardPlate.includes(p);
             const matchType = t === "" || cardType === t;
-            
-            if (matchDate && matchPlate && matchType) {
-                c.style.display = 'block';
-                count++;
-            } else {
-                c.style.display = 'none';
-            }
+            c.style.display = (matchDate && matchPlate && matchType) ? 'block' : 'none';
         });
-        console.log("Filter complete. Matches found:", count);
     }
+
     function hienTatCaAnh() { 
         document.getElementById('search-date').value = "";
         document.getElementById('search-plate').value = "";
@@ -467,7 +414,6 @@
     
     function deleteViolation(id) {
         if(confirm("Are you sure you want to delete this violation?")) {
-            console.log("Deleting violation with ID:", id);
             window.location.href = "deleteViolation?id=" + id;
         }
     }
@@ -475,43 +421,35 @@
     function deleteAllViolations() {
         const count = document.querySelectorAll('.violation-card').length;
         if (count === 0) { alert("No violations to delete."); return; }
-        if (confirm("⚠️ Are you sure you want to DELETE ALL " + count + " violations?\nThis will also remove all images from storage. This cannot be undone!")) {
-            console.log("Deleting ALL violations...");
+        if (confirm("⚠️ Are you sure you want to DELETE ALL " + count + " violations?")) {
             window.location.href = "deleteAllViolations";
         }
     }
+
     function moAnhPhongTo(src, t, p, vtype, conf) {
-        console.log("Viewing Violation Details:", { plate: p, vehicle: vtype, time: t, confidence: conf });
         document.getElementById('secModalImg').src = src;
         document.getElementById('modalPlate').innerText = p;
         document.getElementById('modalVehicleType').innerText = vtype;
         document.getElementById('modalTime').innerText = t;
-        
         let confEl = document.getElementById('modalConfident');
         if (confEl) {
             if (conf && conf !== 'null' && conf !== '') {
                 let cVal = parseFloat(conf);
                 confEl.innerText = cVal.toFixed(1) + "%";
-                if (cVal >= 80) confEl.style.color = "#10b981";
-                else if (cVal >= 50) confEl.style.color = "#f59e0b";
-                else confEl.style.color = "#ef4444";
+                confEl.style.color = (cVal >= 80) ? "#10b981" : (cVal >= 50 ? "#f59e0b" : "#ef4444");
             } else {
-                confEl.innerText = "N/A";
-                confEl.style.color = "var(--text-muted)";
+                confEl.innerText = "N/A"; confEl.style.color = "var(--text-muted)";
             }
         }
-        
         document.getElementById('secModal').style.display = 'flex';
     }
+
     function dongAnhPhongTo() { document.getElementById('secModal').style.display = 'none'; }
 
     function handleLogin() {
         const u = document.getElementById('login-user').value;
         const p = document.getElementById('login-pass').value;
-        const isAdmin = (u === "admin" && p === "123");
-        const isLocalAdmin = (u === localStorage.getItem('adminUser') && p === localStorage.getItem('adminPass'));
-        
-        if (isAdmin || isLocalAdmin) {
+        if ((u === "admin" && p === "123") || (u === localStorage.getItem('adminUser') && p === localStorage.getItem('adminPass'))) {
             sessionStorage.setItem('adminLoggedIn', 'true');
             startAdminSession();
         } else alert("Sai tài khoản!");
@@ -526,21 +464,15 @@
                 if (isVirtualMode) {
                     if (timeLeft1 > 0) timeLeft1--;
                     if (timeLeft2 > 0) timeLeft2--;
-                    
                     if (timeLeft1 <= 0 && timeLeft2 <= 0) {
-                        vPhase++;
-                        if (vPhase > 4) vPhase = 1;
+                        vPhase++; if (vPhase > 4) vPhase = 1;
                         setVirtualLightState();
                     }
                     document.getElementById('timer1-display').innerText = timeLeft1 + "s";
                     document.getElementById('timer2-display').innerText = timeLeft2 + "s";
                 } else if (isConnected) {
-                    if (timeLeft1 > 0 && !document.getElementById('light1-red').classList.contains('blinking-red')) {
-                        timeLeft1--;
-                    }
-                    if (timeLeft2 > 0 && !document.getElementById('light2-red').classList.contains('blinking-red')) {
-                        timeLeft2--;
-                    }
+                    if (timeLeft1 > 0 && !document.getElementById('light1-red').classList.contains('blinking-red')) timeLeft1--;
+                    if (timeLeft2 > 0 && !document.getElementById('light2-red').classList.contains('blinking-red')) timeLeft2--;
                     document.getElementById('timer1-display').innerText = timeLeft1 + "s";
                     document.getElementById('timer2-display').innerText = timeLeft2 + "s";
                 }
@@ -554,25 +486,19 @@
     }
     
     window.addEventListener('DOMContentLoaded', () => {
-        const violations = document.querySelectorAll('.violation-card');
-        console.log("Dashboard Loaded. Total violations in DOM:", violations.length);
-        if (violations.length > 0) {
-            console.log("Sample License Plates:", [...violations].slice(0, 5).map(c => c.getAttribute('data-plate')));
-        }
+        // GẮN SỰ KIỆN LẮNG NGHE CHO Ô XANH VÀ VÀNG
+        document.getElementById('g').addEventListener('input', autoCalculateRed);
+        document.getElementById('y').addEventListener('input', autoCalculateRed);
 
         if (sessionStorage.getItem('adminLoggedIn') === 'true') {
              startAdminSession();
-             
-             // If we're already logged in, show the last visited section or dashboard
              const hash = window.location.hash.replace('#', '') || 'dashboard';
              showSection(hash);
         }
     });
     
     window.addEventListener('beforeunload', function (e) {
-        if (isAdjusting) {
-            navigator.sendBeacon('set_adjust_status.jsp?status=false');
-        }
+        if (isAdjusting) navigator.sendBeacon('set_adjust_status.jsp?status=false');
     });
 </script>
 </body>
