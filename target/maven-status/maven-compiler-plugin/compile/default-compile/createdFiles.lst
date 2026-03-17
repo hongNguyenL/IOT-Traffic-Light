@@ -7,6 +7,7 @@ model\TrafficSensorData.class
 dao\ControlLogDAO.class
 dao\TrafficSensorDataDAO.class
 com\mycompany\iot\JakartaRestConfiguration.class
+controller\DeleteAllViolationsServlet.class
 Esp32Server\Esp32ServerListener.class
 controller\AdminServlet.class
 dao\ViolationDAO.class
