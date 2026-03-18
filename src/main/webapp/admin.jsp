@@ -196,36 +196,39 @@
         window.location.hash = id;
     }
 
-    async function fetchStatus() {
+async function fetchStatus() {
         if (isAdjusting) {
             setTimeout(fetchStatus, 800);
             return;
         }
         try {
             const res = await fetch('status_api.jsp');
-            let txt = (await res.text()).trim().toUpperCase();
+            let rawTxt = (await res.text()).trim().toUpperCase();
             
-            let isLocked = false;
-            if (txt.includes("|LOCKED")) {
-                 isLocked = true;
-                 txt = txt.replace("|LOCKED", "");
-            } else if (txt.includes("|FREE")) {
-                 txt = txt.replace("|FREE", "");
+            // Tách chuỗi theo dấu |
+            let parts = rawTxt.split('|');
+            let txt = parts[0];       // Đây là chuỗi "D1: XANH, D2: DO, T:10"
+            let lockInfo = parts[1] || "FREE";
+            let configInfo = parts[2] || "";
+
+            // Cập nhật lại config để đếm giây không bị lệch
+            if (configInfo) {
+                let c = configInfo.split(',');
+                config.GREEN = parseInt(c[0]);
+                config.YELLOW = parseInt(c[1]);
+                config.RED = config.GREEN + config.YELLOW;
             }
-            
+
             const btnS = document.getElementById('btn-start');
-            if (isLocked) {
+            if (lockInfo === "LOCKED") {
                 btnS.disabled = true;
                 btnS.innerText = "Locked: User Adjusting";
                 btnS.style.opacity = 0.5;
-                btnS.style.cursor = "not-allowed";
                 document.getElementById('mode-badge').style.display = 'block';
-                document.getElementById('mode-badge').innerText = "[ ANOTHER USER IS ADJUSTING SETTINGS ]";
             } else if (btnS.disabled) {
                 btnS.disabled = false;
                 btnS.innerText = "Start Adjusting";
                 btnS.style.opacity = 1;
-                btnS.style.cursor = "pointer";
                 document.getElementById('mode-badge').style.display = 'none';
             }
 
@@ -233,40 +236,41 @@
             const connText = document.getElementById('conn-text');
 
             if (!isVirtualMode) {
-                if (txt === "LOST CONNECTION") {
+                if (txt.includes("LOST CONNECTION")) {
                     setOfflineUI(dot, connText);
-                }
-                else if (txt.includes("WAITING FOR ESP32")) {
-                    isConnected = true;
-                    dot.className = "status-dot online";
-                    connText.innerText = "SERVER ONLINE - ĐANG ĐỢI ESP32...";
-                    connText.style.color = "#f59e0b";
-                }
-                else {
+                } else {
                     setOnlineUI(dot, connText);
                     let color1 = "", color2 = "";
-                    if (txt.includes("D1: XANH") || txt.includes("D1: GREEN")) color1 = "GREEN";
-                    else if (txt.includes("D1: VANG") || txt.includes("D1: YELLOW")) color1 = "YELLOW";
-                    else if (txt.includes("D1: DO") || txt.includes("D1: RED")) color1 = "RED";
-                    if (txt.includes("D2: XANH") || txt.includes("D2: GREEN")) color2 = "GREEN";
-                    else if (txt.includes("D2: VANG") || txt.includes("D2: YELLOW")) color2 = "YELLOW";
-                    else if (txt.includes("D2: DO") || txt.includes("D2: RED")) color2 = "RED";
+                    
+                    // Kiểm tra màu đèn (Lưu ý: Phải khớp chính xác từng dấu cách với ESP32)
+                    if (txt.includes("D1: XANH")) color1 = "GREEN";
+                    else if (txt.includes("D1: VANG")) color1 = "YELLOW";
+                    else if (txt.includes("D1: DO")) color1 = "RED";
+
+                    if (txt.includes("D2: XANH")) color2 = "GREEN";
+                    else if (txt.includes("D2: VANG")) color2 = "YELLOW";
+                    else if (txt.includes("D2: DO")) color2 = "RED";
 
                     let hwTimer = -1;
                     const tMatch = txt.match(/T:(\d+)/);
                     if (tMatch) hwTimer = parseInt(tMatch[1]);
+                    
+                    // Đồng bộ thời gian Hướng 1
                     updateLightUI(1, color1, hwTimer);
-                    updateLightUI(2, color2, hwTimer);
+                    
+                    // Tự tính thời gian Hướng 2 để không bị giống hệt Hướng 1
+                    let t2 = hwTimer;
+                    if (color1 === "GREEN") t2 = hwTimer + config.YELLOW;
+                    else if (color1 === "RED") t2 = hwTimer - config.YELLOW;
+                    
+                    updateLightUI(2, color2, t2);
                 }
             }
         } catch (e) {
-            if (!isVirtualMode) {
-                setOfflineUI(document.getElementById('status-dot'), document.getElementById('conn-text'));
-            }
+            console.error("Lỗi fetch:", e);
         }
         setTimeout(fetchStatus, 800);
     }
-
     function setOfflineUI(dot, connText) {
         isConnected = false;
         dot.className = "status-dot offline";
