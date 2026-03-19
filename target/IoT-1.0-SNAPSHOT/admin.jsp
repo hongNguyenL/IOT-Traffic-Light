@@ -196,7 +196,7 @@
         window.location.hash = id;
     }
 
-async function fetchStatus() {
+    async function fetchStatus() {
     if (isAdjusting) {
         setTimeout(fetchStatus, 800);
         return;
@@ -205,13 +205,10 @@ async function fetchStatus() {
         const res = await fetch('status_api.jsp');
         let rawTxt = (await res.text()).trim().toUpperCase();
         
-        // 1. TÁCH DỮ LIỆU CHUẨN (ESP32 | LOCK | CONFIG)
         let parts = rawTxt.split('|');
         let txt = parts[0];       
-        let lockInfo = parts[1] || "FREE";
         let configInfo = parts[2] || "";
 
-        // Cập nhật cấu hình thời gian mới nhất từ Server
         if (configInfo) {
             let c = configInfo.split(',');
             config.GREEN = parseInt(c[0]);
@@ -219,17 +216,13 @@ async function fetchStatus() {
             config.RED = config.GREEN + config.YELLOW;
         }
 
-        // 2. XỬ LÝ TRẠNG THÁI KHÓA (LOCKED)
         const btnS = document.getElementById('btn-start');
+        const lockInfo = parts[1] || "FREE";
         if (lockInfo === "LOCKED") {
             btnS.disabled = true;
-            btnS.innerText = "Locked: User Adjusting";
-            btnS.style.opacity = 0.5;
             document.getElementById('mode-badge').style.display = 'block';
         } else {
             btnS.disabled = false;
-            btnS.innerText = "Start Adjusting";
-            btnS.style.opacity = 1;
             document.getElementById('mode-badge').style.display = 'none';
         }
 
@@ -237,13 +230,12 @@ async function fetchStatus() {
         const connText = document.getElementById('conn-text');
 
         if (!isVirtualMode) {
-            // Kiểm tra các từ khóa mất kết nối
-            if (txt.includes("LOST CONNECTION") || txt === "" || txt.includes("WAITING")) {
+            if (txt.includes("LOST CONNECTION") || txt === "") {
                 setOfflineUI(dot, connText);
             } else {
                 setOnlineUI(dot, connText);
                 
-                // 3. PHÂN TÍCH MÀU ĐÈN
+                // 1. LẤY MÀU VÀ GIÂY THẬT TỪ ESP32 (TRUTH)
                 let color1 = "", color2 = "";
                 if (txt.includes("D1: XANH")) color1 = "GREEN";
                 else if (txt.includes("D1: VANG")) color1 = "YELLOW";
@@ -253,58 +245,65 @@ async function fetchStatus() {
                 else if (txt.includes("D2: VANG")) color2 = "YELLOW";
                 else if (txt.includes("D2: DO")) color2 = "RED";
 
-                // 4. LẤY GIÂY TỪ THIẾT BỊ (TRUTH)
                 let hwTimer = -1;
                 const tMatch = txt.match(/T:(\d+)/);
                 if (tMatch) hwTimer = parseInt(tMatch[1]);
-                
-                // Cập nhật hướng 1
+
+                // 2. GỌI HÀM CẬP NHẬT CÓ KÈM DỰ ĐOÁN
                 updateLightUI(1, color1, hwTimer);
                 
-                // Dự đoán thời gian cho hướng 2 dựa trên độ lệch pha (Offset)
+                // Tính toán giây hướng 2 theo logic lệch pha
                 let t2 = hwTimer;
                 if (color1 === "GREEN") t2 = hwTimer + config.YELLOW;
                 else if (color1 === "RED") t2 = hwTimer - config.YELLOW;
-                
                 updateLightUI(2, color2, t2);
             }
         }
     } catch (e) {
-        console.error("Lỗi fetch dữ liệu:", e);
+        console.error("Lỗi fetch:", e);
     }
     setTimeout(fetchStatus, 800);
 }
 
 function updateLightUI(idx, color, hwTimer) {
     if (!color) return;
-    
-    const prefix = "light" + idx + "-";
-    const currentRef = (idx === 1) ? currentMainColor1 : currentMainColor2;
-    
-    // 1. NẾU CHUYỂN MÀU ĐÈN: Cập nhật UI ngay lập tức
-    if (color !== currentRef) {
+
+    // LẤY TRẠNG THÁI HIỆN TẠI TRÊN WEB
+    let currentLocalColor = (idx === 1) ? currentMainColor1 : currentMainColor2;
+    let currentLocalTime = (idx === 1) ? timeLeft1 : timeLeft2;
+
+    // --- CƠ CHẾ DỰ ĐOÁN (PREDICTION) ---
+    // Nếu thời gian trên Web đã về 0 mà ESP32 chưa kịp gửi tin nhắn mới
+    // Web sẽ tự động nhảy sang màu tiếp theo theo vòng đời đèn giao thông
+    if (currentLocalTime <= 0 && isConnected && !isVirtualMode) {
+        let nextColor = "";
+        if (currentLocalColor === "GREEN") nextColor = "YELLOW";
+        else if (currentLocalColor === "YELLOW") nextColor = "RED";
+        else if (currentLocalColor === "RED") nextColor = "GREEN";
+        
+        // Chỉ dự đoán nếu màu mới khác màu cũ
+        if (nextColor && nextColor !== currentLocalColor) {
+            color = nextColor; 
+            hwTimer = config[nextColor]; // Lấy thời gian mặc định của màu mới
+        }
+    }
+
+    // --- CẬP NHẬT UI ---
+    if (color !== currentLocalColor) {
         if (idx === 1) currentMainColor1 = color; else currentMainColor2 = color;
         
-        // Reset các class active
-        document.querySelectorAll('[id^="light' + idx + '-"]').forEach(l => {
-            l.classList.remove('active', 'blinking-red');
-        });
-        
-        // Bật đèn mới
-        const targetLight = document.getElementById(prefix + color.toLowerCase());
-        if (targetLight) targetLight.classList.add('active');
+        // Đổi màu đèn trên giao diện
+        document.querySelectorAll('[id^="light' + idx + '-"]').forEach(l => l.classList.remove('active'));
+        const target = document.getElementById('light' + idx + '-' + color.toLowerCase());
+        if (target) target.classList.add('active');
         
         document.getElementById('status' + idx + '-display').innerText = color + " LIGHT";
         
-        // Ép số giây về đúng mốc bắt đầu của đèn đó để tránh lag
+        // Gán thời gian mới
         if (idx === 1) timeLeft1 = hwTimer; else timeLeft2 = hwTimer;
-    } 
-    // 2. NẾU CÙNG MÀU: Áp dụng Prediction (Chỉ sửa nếu lệch quá 1 giây)
-    else if (hwTimer >= 0) {
-        let localVal = (idx === 1) ? timeLeft1 : timeLeft2;
-        
-        // Nếu số giây trên Web lệch so với ESP32 hơn 1 giây, ta mới "nhảy" số
-        if (Math.abs(localVal - hwTimer) > 1) {
+    } else {
+        // Nếu cùng màu, chỉ sửa giây nếu lệch quá 2 giây (Chống nhảy số liên tục do lag)
+        if (Math.abs(currentLocalTime - hwTimer) > 2) {
             if (idx === 1) timeLeft1 = hwTimer; else timeLeft2 = hwTimer;
         }
     }
