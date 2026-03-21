@@ -196,7 +196,9 @@
         window.location.hash = id;
     }
 
-    async function fetchStatus() {
+let lastHwTimer = -1; // Biến phụ để theo dõi thay đổi
+
+async function fetchStatus() {
     if (isAdjusting) {
         setTimeout(fetchStatus, 800);
         return;
@@ -209,6 +211,7 @@
         let txt = parts[0];       
         let configInfo = parts[2] || "";
 
+        // Cập nhật cấu hình thời gian
         if (configInfo) {
             let c = configInfo.split(',');
             config.GREEN = parseInt(c[0]);
@@ -216,52 +219,58 @@
             config.RED = config.GREEN + config.YELLOW;
         }
 
-        const btnS = document.getElementById('btn-start');
-        const lockInfo = parts[1] || "FREE";
-        if (lockInfo === "LOCKED") {
-            btnS.disabled = true;
-            document.getElementById('mode-badge').style.display = 'block';
-        } else {
-            btnS.disabled = false;
-            document.getElementById('mode-badge').style.display = 'none';
-        }
-
         const dot = document.getElementById('status-dot');
         const connText = document.getElementById('conn-text');
 
-        if (!isVirtualMode) {
-            if (txt.includes("LOST CONNECTION") || txt === "") {
-                setOfflineUI(dot, connText);
-            } else {
-                setOnlineUI(dot, connText);
-                
-                // 1. LẤY MÀU VÀ GIÂY THẬT TỪ ESP32 (TRUTH)
-                let color1 = "", color2 = "";
+        if (txt.includes("LOST CONNECTION") || txt === "") {
+            setOfflineUI(dot, connText);
+        } else {
+            setOnlineUI(dot, connText);
+            
+            // Lấy giây thật từ ESP32
+            let hwTimer = -1;
+            const tMatch = txt.match(/T:(\d+)/);
+            if (tMatch) hwTimer = parseInt(tMatch[1]);
+
+            // CHỈ CẬP NHẬT KHI GIÂY THỰC SỰ THAY ĐỔI (Tránh chạy nhanh hơn đèn thật)
+            if (hwTimer !== lastHwTimer) {
+                lastHwTimer = hwTimer;
+
+                // Xác định màu hướng 1
+                let color1 = "";
                 if (txt.includes("D1: XANH")) color1 = "GREEN";
                 else if (txt.includes("D1: VANG")) color1 = "YELLOW";
                 else if (txt.includes("D1: DO")) color1 = "RED";
 
+                // Xác định màu hướng 2
+                let color2 = "";
                 if (txt.includes("D2: XANH")) color2 = "GREEN";
                 else if (txt.includes("D2: VANG")) color2 = "YELLOW";
                 else if (txt.includes("D2: DO")) color2 = "RED";
 
-                let hwTimer = -1;
-                const tMatch = txt.match(/T:(\d+)/);
-                if (tMatch) hwTimer = parseInt(tMatch[1]);
-
-                // 2. GỌI HÀM CẬP NHẬT CÓ KÈM DỰ ĐOÁN
+                // Cập nhật Hướng 1
                 updateLightUI(1, color1, hwTimer);
                 
-                // Tính toán giây hướng 2 theo logic lệch pha
+                // TÍNH TOÁN HƯỚNG 2 CHUẨN (Chống số âm)
                 let t2 = hwTimer;
-                if (color1 === "GREEN") t2 = hwTimer + config.YELLOW;
-                else if (color1 === "RED") t2 = hwTimer - config.YELLOW;
+                if (color1 === "GREEN") {
+                    t2 = hwTimer + config.YELLOW;
+                } else if (color1 === "RED") {
+                    // Nếu hướng 1 đang đỏ, hướng 2 có thể là Xanh hoặc Vàng
+                    if (hwTimer > config.YELLOW) {
+                        t2 = hwTimer - config.YELLOW; // Đang Xanh
+                    } else {
+                        t2 = hwTimer; // Đang Vàng (chạy cùng giây đỏ cuối của hướng 1)
+                    }
+                }
+                
                 updateLightUI(2, color2, t2);
             }
         }
     } catch (e) {
         console.error("Lỗi fetch:", e);
     }
+    // Giữ nguyên 800ms để đảm bảo bắt kịp thay đổi của Server ngay khi nó xảy ra
     setTimeout(fetchStatus, 800);
 }
 
