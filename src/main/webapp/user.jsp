@@ -116,12 +116,60 @@
                         else t2 = hwTimer;
                     }
                     updateLightUI(2, color2, t2);
+
+                    // FORCE UI TO FOLLOW ESP32
+                    document.getElementById('timer1-display').innerText = hwTimer + "s";
+                    document.getElementById('timer2-display').innerText = t2 + "s";
                 }
             }
         } catch (e) {
             console.error("Fetch error:", e);
         }
-        setTimeout(fetchStatus, 800);
+    }
+
+    let socket;
+    function connectWS() {
+        const protocol = location.protocol === "https:" ? "wss" : "ws";
+        socket = new WebSocket(protocol + "://" + location.host + "/traffic");
+
+        socket.onmessage = (event) => {
+            handleRealtimeData(event.data);
+        };
+
+        socket.onclose = () => {
+            setTimeout(connectWS, 2000);
+        };
+    }
+
+    function handleRealtimeData(txt) {
+        txt = txt.toUpperCase();
+
+        let hwTimer = -1;
+        const tMatch = txt.match(/T:(\d+)/);
+        if (tMatch) hwTimer = parseInt(tMatch[1]);
+
+        let color1 = "", color2 = "";
+
+        if (txt.includes("D1: XANH")) color1 = "GREEN";
+        else if (txt.includes("D1: VANG")) color1 = "YELLOW";
+        else if (txt.includes("D1: DO")) color1 = "RED";
+
+        if (txt.includes("D2: XANH")) color2 = "GREEN";
+        else if (txt.includes("D2: VANG")) color2 = "YELLOW";
+        else if (txt.includes("D2: DO")) color2 = "RED";
+
+        updateLightUI(1, color1, hwTimer);
+
+        let t2 = hwTimer;
+        if (color1 === "GREEN") t2 = hwTimer + config.YELLOW;
+        else if (color1 === "RED") {
+            if (hwTimer > config.YELLOW) t2 = hwTimer - config.YELLOW;
+        }
+
+        updateLightUI(2, color2, t2);
+
+        document.getElementById('timer1-display').innerText = hwTimer + "s";
+        document.getElementById('timer2-display').innerText = t2 + "s";
     }
 
     function updateLightUI(idx, color, hwTimer) {
@@ -138,8 +186,8 @@
             
             if (idx === 1) timeLeft1 = hwTimer; else timeLeft2 = hwTimer;
         } else {
-            // Đồng bộ nếu lệch > 1s, nhưng KHÔNG ghi đè nếu web đã về 0 (chờ ESP32 thực sự chuyển màu)
-            if (Math.abs(currentLocalTime - hwTimer) > 1 && currentLocalTime > 0) {
+            // Đồng bộ nếu lệch > 1s
+            if (Math.abs(currentLocalTime - hwTimer) > 1) {
                 if (idx === 1) timeLeft1 = hwTimer; else timeLeft2 = hwTimer;
             }
         }
@@ -179,14 +227,7 @@
     }
 
     fetchStatus();
-    setInterval(() => {
-        if (isConnected) {
-            if (timeLeft1 > 0) timeLeft1--;
-            if (timeLeft2 > 0) timeLeft2--;
-            document.getElementById('timer1-display').innerText = timeLeft1 + "s";
-            document.getElementById('timer2-display').innerText = timeLeft2 + "s";
-        }
-    }, 1000);
+    connectWS();
 </script>
 </body>
 </html>

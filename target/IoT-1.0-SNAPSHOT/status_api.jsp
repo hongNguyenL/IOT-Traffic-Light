@@ -1,5 +1,5 @@
 <%@ page contentType="text/plain;charset=UTF-8" language="java" %>
-<%@ page import="Esp32Server.Esp32ServerListener" %>
+<%@ page import="Esp32Server.Esp32ServerListener, websocket.TrafficWebSocket" %>
 <%
     // 1. Lấy dữ liệu từ ESP32 gửi lên
     String msg = request.getParameter("msg");
@@ -10,6 +10,9 @@
         // Cập nhật trạng thái và thời gian cập nhật cuối cùng (Nhịp tim)
         Esp32ServerListener.currentStatus = msg.trim();
         Esp32ServerListener.lastUpdate = currentTime;
+
+        // 🔥 PUSH instantly to UI
+        TrafficWebSocket.broadcast(msg.trim());
         
         // Cập nhật cảm biến (nếu có)
         if (request.getParameter("ir1") != null) Esp32ServerListener.ir1Status = request.getParameter("ir1");
