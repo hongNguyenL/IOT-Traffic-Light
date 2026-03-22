@@ -44,7 +44,11 @@
                             Esp32ServerListener.timeYellow + "," + 
                             Esp32ServerListener.timeRed;
         
-        // Kết quả trả về Web: STATUS | LOCK | G,Y,R
-        out.print(status.trim() + lockStatus + configData);
+        // TÍNH TOÁN ĐỘ TRỄ (AGE) CỦA DỮ LIỆU ĐỂ WEB TRỪ ĐI KHI XEM T:XX
+        long age = (lastUpdate == 0) ? 0 : (currentTime - lastUpdate);
+        String ageInfo = "|" + age;
+        
+        // Kết quả trả về Web: STATUS | LOCK | G,Y,R | AGE
+        out.print(status.trim() + lockStatus + configData + ageInfo);
     }
 %>

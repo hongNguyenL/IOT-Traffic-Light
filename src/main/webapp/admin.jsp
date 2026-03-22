@@ -210,6 +210,7 @@ async function fetchStatus() {
         let parts = rawTxt.split('|');
         let txt = parts[0];       
         let configInfo = parts[2] || "";
+        let age = parseInt(parts[3]) || 0; // Độ trễ từ server (ms)
 
         // Cập nhật cấu hình thời gian
         if (configInfo) {
@@ -230,7 +231,14 @@ async function fetchStatus() {
             // Lấy giây thật từ ESP32
             let hwTimer = -1;
             const tMatch = txt.match(/T:(\d+)/);
-            if (tMatch) hwTimer = parseInt(tMatch[1]);
+            if (tMatch) {
+                hwTimer = parseInt(tMatch[1]);
+                // Trừ đi độ trễ mạng (age) để khớp thời gian thực tế hiện tại
+                if (age > 1000) {
+                    hwTimer -= Math.floor(age / 1000);
+                    if (hwTimer < 0) hwTimer = 0;
+                }
+            }
 
             // CHỈ CẬP NHẬT KHI GIÂY THỰC SỰ THAY ĐỔI (Tránh chạy nhanh hơn đèn thật)
             if (hwTimer !== lastHwTimer) {
@@ -311,8 +319,8 @@ function updateLightUI(idx, color, hwTimer) {
         // Gán thời gian mới
         if (idx === 1) timeLeft1 = hwTimer; else timeLeft2 = hwTimer;
     } else {
-        // Nếu cùng màu, chỉ sửa giây nếu lệch quá 2 giây (Chống nhảy số liên tục do lag)
-        if (Math.abs(currentLocalTime - hwTimer) > 2) {
+        // Nếu cùng màu, chỉ sửa giây nếu lệch quá 1 giây (Đã được bù trừ độ trễ mạng)
+        if (Math.abs(currentLocalTime - hwTimer) > 1) {
             if (idx === 1) timeLeft1 = hwTimer; else timeLeft2 = hwTimer;
         }
     }
