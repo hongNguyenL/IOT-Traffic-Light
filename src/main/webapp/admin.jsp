@@ -207,10 +207,10 @@ async function fetchStatus() {
         const res = await fetch('status_api.jsp');
         let rawTxt = (await res.text()).trim().toUpperCase();
         
+        // Parts: STATUS | LOCKED | configData | AGE
         let parts = rawTxt.split('|');
         let txt = parts[0];       
         let configInfo = parts[2] || "";
-        let age = parseInt(parts[3]) || 0; // Độ trễ từ server (ms)
 
         // Cập nhật cấu hình thời gian
         if (configInfo) {
@@ -227,57 +227,7 @@ async function fetchStatus() {
             setOfflineUI(dot, connText);
         } else {
             setOnlineUI(dot, connText);
-            
-            // Lấy giây thật từ ESP32
-            let hwTimer = -1;
-            const tMatch = txt.match(/T:(\d+)/);
-            if (tMatch) {
-                hwTimer = parseInt(tMatch[1]);
-                // Trừ đi độ trễ mạng (age) để khớp thời gian thực tế hiện tại
-                if (age > 1000) {
-                    hwTimer -= Math.floor(age / 1000);
-                    if (hwTimer < 0) hwTimer = 0;
-                }
-            }
-
-            // CHỈ CẬP NHẬT KHI GIÂY THỰC SỰ THAY ĐỔI (Tránh chạy nhanh hơn đèn thật)
-            if (hwTimer !== lastHwTimer) {
-                lastHwTimer = hwTimer;
-
-                // Xác định màu hướng 1
-                let color1 = "";
-                if (txt.includes("D1: XANH")) color1 = "GREEN";
-                else if (txt.includes("D1: VANG")) color1 = "YELLOW";
-                else if (txt.includes("D1: DO")) color1 = "RED";
-
-                // Xác định màu hướng 2
-                let color2 = "";
-                if (txt.includes("D2: XANH")) color2 = "GREEN";
-                else if (txt.includes("D2: VANG")) color2 = "YELLOW";
-                else if (txt.includes("D2: DO")) color2 = "RED";
-
-                // Cập nhật Hướng 1
-                updateLightUI(1, color1, hwTimer);
-                
-                // TÍNH TOÁN HƯỚNG 2 CHUẨN (Chống số âm)
-                let t2 = hwTimer;
-                if (color1 === "GREEN") {
-                    t2 = hwTimer + config.YELLOW;
-                } else if (color1 === "RED") {
-                    // Nếu hướng 1 đang đỏ, hướng 2 có thể là Xanh hoặc Vàng
-                    if (hwTimer > config.YELLOW) {
-                        t2 = hwTimer - config.YELLOW; // Đang Xanh
-                    } else {
-                        t2 = hwTimer; // Đang Vàng (chạy cùng giây đỏ cuối của hướng 1)
-                    }
-                }
-                
-                updateLightUI(2, color2, t2);
-
-                // FORCE UI TO FOLLOW ESP32
-                document.getElementById('timer1-display').innerText = hwTimer + "s";
-                document.getElementById('timer2-display').innerText = t2 + "s";
-            }
+            handleHardwareUpdate(txt);
         }
     } catch (e) {
         console.error("Lỗi fetch:", e);
@@ -290,7 +240,14 @@ function connectWS() {
     socket = new WebSocket(wsUrl);
 
     socket.onmessage = (event) => {
-        handleRealtimeData(event.data);
+        const txt = event.data.toUpperCase();
+        
+        // Hiển thị Online ngay khi có data
+        const dot = document.getElementById('status-dot');
+        const connText = document.getElementById('conn-text');
+        setOnlineUI(dot, connText);
+
+        handleHardwareUpdate(txt);
     };
 
     socket.onclose = () => {
@@ -298,38 +255,35 @@ function connectWS() {
     };
 }
 
-function handleRealtimeData(txt) {
-    txt = txt.toUpperCase();
-
-    // Hiển thị Online khi nhận được dữ liệu WebSocket
-    const dot = document.getElementById('status-dot');
-    const connText = document.getElementById('conn-text');
-    if (dot && connText) setOnlineUI(dot, connText);
-
+function handleHardwareUpdate(txt) {
+    // Parsing Hardware format: D1: XANH, D2: DO, T:10
     let hwTimer = -1;
     const tMatch = txt.match(/T:(\d+)/);
     if (tMatch) hwTimer = parseInt(tMatch[1]);
 
-    let color1 = "", color2 = "";
-
+    let color1 = "";
     if (txt.includes("D1: XANH")) color1 = "GREEN";
     else if (txt.includes("D1: VANG")) color1 = "YELLOW";
     else if (txt.includes("D1: DO")) color1 = "RED";
 
+    let color2 = "";
     if (txt.includes("D2: XANH")) color2 = "GREEN";
     else if (txt.includes("D2: VANG")) color2 = "YELLOW";
     else if (txt.includes("D2: DO")) color2 = "RED";
 
+    // Cập nhật màu đèn
     updateLightUI(1, color1, hwTimer);
-
+    
+    // Tính toán cho Hướng 2 (Nếu cần hiển thị tương ứng)
     let t2 = hwTimer;
     if (color1 === "GREEN") t2 = hwTimer + config.YELLOW;
     else if (color1 === "RED") {
         if (hwTimer > config.YELLOW) t2 = hwTimer - config.YELLOW;
     }
-
+    
     updateLightUI(2, color2, t2);
 
+    // Cần FORCE UI ngay để số ko bị đứng
     document.getElementById('timer1-display').innerText = hwTimer + "s";
     document.getElementById('timer2-display').innerText = t2 + "s";
 }
