@@ -138,8 +138,8 @@
             
             if (idx === 1) timeLeft1 = hwTimer; else timeLeft2 = hwTimer;
         } else {
-            // Đồng bộ nếu lệch > 1s
-            if (Math.abs(currentLocalTime - hwTimer) > 1) {
+            // Đồng bộ nếu lệch > 1s, nhưng KHÔNG ghi đè nếu web đã về 0 (chờ ESP32 thực sự chuyển màu)
+            if (Math.abs(currentLocalTime - hwTimer) > 1 && currentLocalTime > 0) {
                 if (idx === 1) timeLeft1 = hwTimer; else timeLeft2 = hwTimer;
             }
         }

@@ -282,49 +282,39 @@ async function fetchStatus() {
     setTimeout(fetchStatus, 800);
 }
 
-function updateLightUI(idx, color, hwTimer) {
-    if (!color) return;
+    function updateLightUI(idx, color, hwTimer) {
+        if (!color) return;
 
-    // LẤY TRẠNG THÁI HIỆN TẠI TRÊN WEB
-    let currentLocalColor = (idx === 1) ? currentMainColor1 : currentMainColor2;
-    let currentLocalTime = (idx === 1) ? timeLeft1 : timeLeft2;
+        // LẤY TRẠNG THÁI HIỆN TẠI TRÊN WEB
+        let currentLocalColor = (idx === 1) ? currentMainColor1 : currentMainColor2;
+        let currentLocalTime = (idx === 1) ? timeLeft1 : timeLeft2;
 
-    // --- CƠ CHẾ DỰ ĐOÁN (PREDICTION) ---
-    // Nếu thời gian trên Web đã về 0 mà ESP32 chưa kịp gửi tin nhắn mới
-    // Web sẽ tự động nhảy sang màu tiếp theo theo vòng đời đèn giao thông
-    if (currentLocalTime <= 0 && isConnected && !isVirtualMode) {
-        let nextColor = "";
-        if (currentLocalColor === "GREEN") nextColor = "YELLOW";
-        else if (currentLocalColor === "YELLOW") nextColor = "RED";
-        else if (currentLocalColor === "RED") nextColor = "GREEN";
-        
-        // Chỉ dự đoán nếu màu mới khác màu cũ
-        if (nextColor && nextColor !== currentLocalColor) {
-            color = nextColor; 
-            hwTimer = config[nextColor]; // Lấy thời gian mặc định của màu mới
-        }
-    }
+        // --- BỎ CƠ CHẾ DỰ ĐOÁN (PREDICTION) SỚM ĐỂ TRÁNH LỆCH PHA VỚI HARDWARE ---
+        // Khi localTime = 0, web sẽ giữ nguyên màu hiện tại (0s) và chờ gói tin
+        // chuyển màu thực sự từ ESP32 trước khi thay đổi UI.
 
-    // --- CẬP NHẬT UI ---
-    if (color !== currentLocalColor) {
-        if (idx === 1) currentMainColor1 = color; else currentMainColor2 = color;
-        
-        // Đổi màu đèn trên giao diện
-        document.querySelectorAll('[id^="light' + idx + '-"]').forEach(l => l.classList.remove('active'));
-        const target = document.getElementById('light' + idx + '-' + color.toLowerCase());
-        if (target) target.classList.add('active');
-        
-        document.getElementById('status' + idx + '-display').innerText = color + " LIGHT";
-        
-        // Gán thời gian mới
-        if (idx === 1) timeLeft1 = hwTimer; else timeLeft2 = hwTimer;
-    } else {
-        // Nếu cùng màu, chỉ sửa giây nếu lệch quá 1 giây (Đã được bù trừ độ trễ mạng)
-        if (Math.abs(currentLocalTime - hwTimer) > 1) {
+        // --- CẬP NHẬT UI ---
+        if (color !== currentLocalColor) {
+            if (idx === 1) currentMainColor1 = color; else currentMainColor2 = color;
+            
+            // Đổi màu đèn trên giao diện
+            document.querySelectorAll('[id^="light' + idx + '-"]').forEach(l => l.classList.remove('active'));
+            const target = document.getElementById('light' + idx + '-' + color.toLowerCase());
+            if (target) target.classList.add('active');
+            
+            document.getElementById('status' + idx + '-display').innerText = color + " LIGHT";
+            
+            // Gán thời gian mới
             if (idx === 1) timeLeft1 = hwTimer; else timeLeft2 = hwTimer;
+        } else {
+            // Nếu cùng màu, chỉ sửa giây nếu lệch quá 1 giây (Đã được bù trừ độ trễ mạng)
+            // Đảm bảo không ghi đè nếu web đã đếm về 0 và đang chờ ESP32 đổi màu
+            if (Math.abs(currentLocalTime - hwTimer) > 1 && currentLocalTime > 0) {
+                if (idx === 1) timeLeft1 = hwTimer; else timeLeft2 = hwTimer;
+            }
         }
     }
-}
+
     function setOfflineUI(dot, connText) {
         isConnected = false;
         dot.className = "status-dot offline";
