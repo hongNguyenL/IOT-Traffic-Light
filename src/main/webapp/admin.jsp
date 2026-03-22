@@ -533,15 +533,25 @@ function handleRealtimeData(txt) {
 
         // CHỈ CHẠY ĐẾM ĐỒNG HỒ CHO VIRTUAL MODE
         setInterval(() => {
-            if (!isAdjusting && isVirtualMode) {
-                if (timeLeft1 > 0) timeLeft1--;
-                if (timeLeft2 > 0) timeLeft2--;
-                if (timeLeft1 <= 0 && timeLeft2 <= 0) {
-                    vPhase++; if (vPhase > 4) vPhase = 1;
-                    setVirtualLightState();
+            if (!isAdjusting) {
+                if (isVirtualMode) {
+                    if (timeLeft1 > 0) timeLeft1--;
+                    if (timeLeft2 > 0) timeLeft2--;
+                    if (timeLeft1 <= 0 && timeLeft2 <= 0) {
+                        vPhase++; if (vPhase > 4) vPhase = 1;
+                        setVirtualLightState();
+                    }
+                    document.getElementById('timer1-display').innerText = timeLeft1 + "s";
+                    document.getElementById('timer2-display').innerText = timeLeft2 + "s";
+                } else if (isConnected) {
+                    // TINH CHỈNH: Bộ đếm mượt mà (Smooth Ticker)
+                    // Chỉ giảm số để UI không bị giật (11 -> 8), nhưng tuyệt đối DỪNG Ở 0
+                    // Không bao giờ tự đổi màu, chờ ESP32 quyết định.
+                    if (timeLeft1 > 0) timeLeft1--;
+                    if (timeLeft2 > 0) timeLeft2--;
+                    document.getElementById('timer1-display').innerText = timeLeft1 + "s";
+                    document.getElementById('timer2-display').innerText = timeLeft2 + "s";
                 }
-                document.getElementById('timer1-display').innerText = timeLeft1 + "s";
-                document.getElementById('timer2-display').innerText = timeLeft2 + "s";
             }
         }, 1000);
     }

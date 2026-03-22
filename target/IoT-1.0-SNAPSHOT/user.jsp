@@ -233,6 +233,18 @@
 
     fetchStatus();
     connectWS();
+
+    // TINH CHỈNH: Bộ đếm mượt mà (Smooth Ticker)
+    // Chỉ giảm số để UI không bị giật (11 -> 8), nhưng tuyệt đối DỪNG Ở 0
+    // Không bao giờ tự đổi màu, chờ ESP32 quyết định.
+    setInterval(() => {
+        if (isConnected) {
+            if (timeLeft1 > 0) timeLeft1--;
+            if (timeLeft2 > 0) timeLeft2--;
+            document.getElementById('timer1-display').innerText = timeLeft1 + "s";
+            document.getElementById('timer2-display').innerText = timeLeft2 + "s";
+        }
+    }, 1000);
 </script>
 </body>
 </html>
