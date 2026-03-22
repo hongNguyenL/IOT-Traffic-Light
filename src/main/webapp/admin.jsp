@@ -499,10 +499,10 @@ function handleHardwareUpdate(txt) {
                     document.getElementById('timer2-display').innerText = timeLeft2 + "s";
                 } else if (isConnected) {
                     // TINH CHỈNH: Bộ đếm mượt mà (Smooth Ticker)
-                    // Chỉ giảm số để UI không bị giật (11 -> 8), nhưng tuyệt đối DỪNG Ở 0
-                    // Không bao giờ tự đổi màu, chờ ESP32 quyết định.
-                    if (timeLeft1 > 0) timeLeft1--;
-                    if (timeLeft2 > 0) timeLeft2--;
+                    // Chỉ giảm số để UI không bị giật, nhưng DỪNG Ở 1S (theo yêu cầu Hardware 1 -> 13)
+                    // Không bao giờ về 0, chờ ESP32 quyết định chuyển màu.
+                    if (timeLeft1 > 1) timeLeft1--;
+                    if (timeLeft2 > 1) timeLeft2--;
                     document.getElementById('timer1-display').innerText = timeLeft1 + "s";
                     document.getElementById('timer2-display').innerText = timeLeft2 + "s";
                 }
