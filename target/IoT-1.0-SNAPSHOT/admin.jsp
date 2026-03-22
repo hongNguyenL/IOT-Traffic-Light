@@ -286,8 +286,8 @@ async function fetchStatus() {
 
 let socket;
 function connectWS() {
-    const protocol = location.protocol === "https:" ? "wss" : "ws";
-    socket = new WebSocket(protocol + "://" + location.host + "/traffic");
+    const wsUrl = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "<%=request.getContextPath()%>/traffic";
+    socket = new WebSocket(wsUrl);
 
     socket.onmessage = (event) => {
         handleRealtimeData(event.data);
@@ -300,6 +300,11 @@ function connectWS() {
 
 function handleRealtimeData(txt) {
     txt = txt.toUpperCase();
+
+    // Hiển thị Online khi nhận được dữ liệu WebSocket
+    const dot = document.getElementById('status-dot');
+    const connText = document.getElementById('conn-text');
+    if (dot && connText) setOnlineUI(dot, connText);
 
     let hwTimer = -1;
     const tMatch = txt.match(/T:(\d+)/);
@@ -525,25 +530,20 @@ function handleRealtimeData(txt) {
         document.getElementById('admin-panel').style.display = 'block';
         fetchStatus();
         connectWS();
-        // setInterval(() => {
-        //     if (!isAdjusting) {
-        //         if (isVirtualMode) {
-        //             if (timeLeft1 > 0) timeLeft1--;
-        //             if (timeLeft2 > 0) timeLeft2--;
-        //             if (timeLeft1 <= 0 && timeLeft2 <= 0) {
-        //                 vPhase++; if (vPhase > 4) vPhase = 1;
-        //                 setVirtualLightState();
-        //             }
-        //             document.getElementById('timer1-display').innerText = timeLeft1 + "s";
-        //             document.getElementById('timer2-display').innerText = timeLeft2 + "s";
-        //         } else if (isConnected) {
-        //             if (timeLeft1 > 0 && !document.getElementById('light1-red').classList.contains('blinking-red')) timeLeft1--;
-        //             if (timeLeft2 > 0 && !document.getElementById('light2-red').classList.contains('blinking-red')) timeLeft2--;
-        //             document.getElementById('timer1-display').innerText = timeLeft1 + "s";
-        //             document.getElementById('timer2-display').innerText = timeLeft2 + "s";
-        //         }
-        //     }
-        // }, 1000);
+
+        // CHỈ CHẠY ĐẾM ĐỒNG HỒ CHO VIRTUAL MODE
+        setInterval(() => {
+            if (!isAdjusting && isVirtualMode) {
+                if (timeLeft1 > 0) timeLeft1--;
+                if (timeLeft2 > 0) timeLeft2--;
+                if (timeLeft1 <= 0 && timeLeft2 <= 0) {
+                    vPhase++; if (vPhase > 4) vPhase = 1;
+                    setVirtualLightState();
+                }
+                document.getElementById('timer1-display').innerText = timeLeft1 + "s";
+                document.getElementById('timer2-display').innerText = timeLeft2 + "s";
+            }
+        }, 1000);
     }
     
     function handleLogout() {
