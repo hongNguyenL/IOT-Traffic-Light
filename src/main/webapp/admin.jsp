@@ -107,15 +107,7 @@
                     <div style="display: flex; gap: 0.5rem; align-items: center;">
                         <input type="date" id="search-date" class="auth-card" style="margin: 0; padding: 0.4rem 0.8rem; font-size: 0.9rem; width: auto;">
                         <input type="text" id="search-plate" class="auth-card" placeholder="License Plate" style="margin: 0; padding: 0.4rem 0.8rem; font-size: 0.9rem; width: 120px;">
-                        <select id="search-type" class="auth-card" style="margin: 0; padding: 0.4rem 0.8rem; font-size: 0.9rem; width: auto; background: white;">
-                            <option value="">All Types</option>
-                            <option value="Car">Car</option>
-                            <option value="Motorbike">Motorbike</option>
-                            <option value="Truck">Truck</option>
-                            <option value="Bus">Bus</option>
-                        </select>
                         <button onclick="filterViolations()" class="btn-mode btn-primary">🔍 Filter</button>
-                        <button onclick="hienTatCaAnh()" class="btn-mode" style="background: var(--secondary); color: white;">🔄 All</button>
                         <button onclick="deleteAllViolations()" class="btn-mode btn-danger">🗑️ Delete All</button>
                     </div>
                 </div>
@@ -417,24 +409,16 @@ function handleHardwareUpdate(txt) {
     function filterViolations() {
         const d = document.getElementById('search-date').value;
         const p = document.getElementById('search-plate').value.toLowerCase();
-        const t = document.getElementById('search-type').value.toLowerCase();
         document.querySelectorAll('.violation-card').forEach(c => {
             const cardDate = c.getAttribute('data-date') || "";
             const cardPlate = (c.getAttribute('data-plate') || "").toLowerCase();
-            const cardType = (c.getAttribute('data-type') || "").toLowerCase();
             const matchDate = d === "" || cardDate.includes(d);
             const matchPlate = p === "" || cardPlate.includes(p);
-            const matchType = t === "" || cardType === t;
-            c.style.display = (matchDate && matchPlate && matchType) ? 'block' : 'none';
+            c.style.display = (matchDate && matchPlate) ? 'block' : 'none';
         });
     }
 
-    function hienTatCaAnh() { 
-        document.getElementById('search-date').value = "";
-        document.getElementById('search-plate').value = "";
-        document.getElementById('search-type').value = "";
-        document.querySelectorAll('.violation-card').forEach(c => c.style.display = 'block'); 
-    }
+    // Removed hienTatCaAnh() to let browser refresh reset the UI
     
     function deleteViolation(id) {
         if(confirm("Are you sure you want to delete this violation?")) {

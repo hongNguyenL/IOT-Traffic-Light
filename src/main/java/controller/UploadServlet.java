@@ -14,7 +14,6 @@ import java.io.InputStream;
 import java.util.Date;
 
 @WebServlet(name = "UploadServlet", urlPatterns = { "/upload" })
-@MultipartConfig
 public class UploadServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
@@ -24,24 +23,11 @@ public class UploadServlet extends HttpServlet {
         String contentType = request.getContentType();
 
         try {
-            if (contentType != null && contentType.startsWith("multipart/form-data")) {
-                // Handle as Multipart
-                jakarta.servlet.http.Part filePart = request.getPart("imageFile"); // Assuming field name is imageFile
-                if (filePart == null) {
-                    filePart = request.getParts().iterator().next(); // Take first part if name is unknown
-                }
-
-                if (filePart != null) {
-                    try (InputStream is = filePart.getInputStream()) {
-                        imageBytes = is.readAllBytes();
-                    }
-                }
-            } else {
-                // Handle as Raw Binary POST
-                try (InputStream inputStream = request.getInputStream()) {
-                    imageBytes = inputStream.readAllBytes();
-                }
+            // Handle as Raw Binary POST (ESP32 sends plain bytes directly in the request body)
+            try (InputStream inputStream = request.getInputStream()) {
+                imageBytes = inputStream.readAllBytes();
             }
+
 
             if (imageBytes != null && imageBytes.length > 0) {
                 System.out.println(">>> Nhan anh tu ESP32: " + imageBytes.length + " bytes");
