@@ -20,27 +20,8 @@
         
         <h2 style="margin-bottom: 2rem;">🚦 Pedestrian Traffic Monitor</h2>
 
-        <div class="traffic-container">
-            <div class="traffic-box">
-                <h3 style="color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase;">Intersection 1</h3>
-                <div class="traffic-light">
-                    <div id="light1-red" class="light red"></div>
-                    <div id="light1-yellow" class="light yellow"></div>
-                    <div id="light1-green" class="light green"></div>
-                </div>
-                <div id="timer1-display" class="timer-val">0s</div>
-            </div>
+        <!-- Traffic visuals removed as per request -->
 
-            <div class="traffic-box">
-                <h3 style="color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase;">Intersection 2</h3>
-                <div class="traffic-light">
-                    <div id="light2-red" class="light red"></div>
-                    <div id="light2-yellow" class="light yellow"></div>
-                    <div id="light2-green" class="light green"></div>
-                </div>
-                <div id="timer2-display" class="timer-val">0s</div>
-            </div>
-        </div>
 
         <div style="display: flex; gap: 10px; margin-top: 2rem; width: 100%;">
             <button onclick="requestCrossing(1)" class="btn-mode btn-primary" style="flex: 1; padding: 1rem; font-size: 1rem; justify-content: center;">
@@ -52,6 +33,10 @@
         </div>
         
         <p id="request-status" style="margin-top: 1rem; color: var(--success); font-weight: 600; display: none;">Request Sent! Please wait for the green light.</p>
+        
+        <div style="margin-top: 2rem; text-align: center; border-top: 1px solid #eee; padding-top: 1.5rem;">
+            <a href="index.jsp" style="color: var(--text-muted); font-size: 0.9rem; text-decoration: none;">← Return to Landing Page</a>
+        </div>
     </div>
 
 <script>
@@ -131,8 +116,6 @@
         else if (txt.includes("D2: VANG")) color2 = "YELLOW";
         else if (txt.includes("D2: DO")) color2 = "RED";
 
-        updateLightUI(1, color1, hwTimer);
-
         // Hướng 2 (Tương quan với hướng 1)
         let t2 = hwTimer;
         if (color1 === "GREEN") t2 = hwTimer + config.YELLOW;
@@ -140,11 +123,8 @@
             if (hwTimer > config.YELLOW) t2 = hwTimer - config.YELLOW;
             else t2 = hwTimer;
         }
+        updateLightUI(1, color1, hwTimer);
         updateLightUI(2, color2, t2);
-
-        // FORCE UI ngay để số ko bị đứng
-        document.getElementById('timer1-display').innerText = hwTimer + "s";
-        document.getElementById('timer2-display').innerText = t2 + "s";
     }
 
     function updateLightUI(idx, color, hwTimer) {
@@ -155,9 +135,6 @@
         // Cập nhật Trạng thái & Đèn
         if (color !== currentLocalColor) {
             if (idx === 1) currentMainColor1 = color; else currentMainColor2 = color;
-            document.querySelectorAll('[id^="light' + idx + '-"]').forEach(l => l.classList.remove('active'));
-            const target = document.getElementById('light' + idx + '-' + color.toLowerCase());
-            if (target) target.classList.add('active');
             
             if (idx === 1) timeLeft1 = hwTimer; else timeLeft2 = hwTimer;
         } else {
@@ -173,9 +150,8 @@
         dot.className = "status-dot offline";
         connText.innerText = "DEVICE OFFLINE";
         connText.style.color = "var(--error)";
-        document.querySelectorAll('.light').forEach(l => l.classList.remove('active'));
-        document.getElementById('timer1-display').innerText = "0s";
-        document.getElementById('timer2-display').innerText = "0s";
+        timeLeft1 = 0;
+        timeLeft2 = 0;
     }
 
     function setOnlineUI(dot, connText) {
@@ -217,8 +193,6 @@
             // Không bao giờ về 0, chờ ESP32 quyết định chuyển màu.
             if (timeLeft1 > 1) timeLeft1--;
             if (timeLeft2 > 1) timeLeft2--;
-            document.getElementById('timer1-display').innerText = timeLeft1 + "s";
-            document.getElementById('timer2-display').innerText = timeLeft2 + "s";
         }
     }, 1000);
 </script>

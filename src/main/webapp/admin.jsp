@@ -23,6 +23,9 @@
         <input type="text" id="login-user" placeholder="Username">
         <input type="password" id="login-pass" placeholder="Password">
         <button onclick="handleLogin()" class="btn-mode btn-primary" style="width:100%; margin-top:10px; justify-content: center;">Login</button>
+        <div style="margin-top: 20px; text-align: center;">
+            <a href="index.jsp" style="color: var(--text-muted); font-size: 0.9rem; text-decoration: none;">← Return to Landing Page</a>
+        </div>
     </div>
 </div>
 
@@ -30,8 +33,7 @@
     <div class="sidebar">
         <h2>🚦 IoT Portal</h2>
         <div class="nav-links">
-            <button onclick="showSection('dashboard')" id="nav-dashboard" class="active"><span class="icon">🏠</span><span class="text">Dashboard</span></button>
-            <button onclick="showSection('control')" id="nav-control"><span class="icon">⚙️</span><span class="text">Settings</span></button>
+            <button onclick="showSection('control')" id="nav-control" class="active"><span class="icon">⚙️</span><span class="text">Settings</span></button>
             <button onclick="showSection('security')" id="nav-security"><span class="icon">📸</span><span class="text">Violations</span></button>
         </div>
         <div class="logout-container">
@@ -39,42 +41,15 @@
         </div>
     </div>
     <div class="main">
-        <div id="dashboard" class="section">
-            <div class="card" style="text-align:center;">
-                <div class="connection-status" style="display: flex; align-items: center;">
-                    <div id="status-dot" class="status-dot"></div>
-                    <span id="conn-text" style="color:var(--text-muted); font-size: 0.85rem; font-weight: 600;">CONNECTING...</span>
-                    <button onclick="toggleVirtualMode()" id="btn-virtual" class="btn-mode" style="margin-left:auto; padding: 6px 12px; font-size: 0.8rem; background: #8b5cf6; color: white;">Enable Virtual Mode</button>
-                </div>
-
-                <div class="traffic-container">
-                    <div class="traffic-box">
-                        <h3 style="color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em;">Intersection 1</h3>
-                        <div class="traffic-light">
-                            <div id="light1-red" class="light red"></div>
-                            <div id="light1-yellow" class="light yellow"></div>
-                            <div id="light1-green" class="light green"></div>
-                        </div>
-                        <div id="timer1-display" class="timer-val">0s</div>
-                        <div id="status1-display" style="font-weight:700; margin-top:1rem; color: var(--primary); font-size: 0.9rem;">WAITING...</div>
-                    </div>
-
-                    <div class="traffic-box">
-                        <h3 style="color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em;">Intersection 2</h3>
-                        <div class="traffic-light">
-                            <div id="light2-red" class="light red"></div>
-                            <div id="light2-yellow" class="light yellow"></div>
-                            <div id="light2-green" class="light green"></div>
-                        </div>
-                        <div id="timer2-display" class="timer-val">0s</div>
-                        <div id="status2-display" style="font-weight:700; margin-top:1rem; color: var(--primary); font-size: 0.9rem;">WAITING...</div>
-                    </div>
-                </div>
-                <p id="mode-badge" style="display:none; color:var(--error); font-weight:700; margin-top:20px; background: #fff1f2; padding: 10px; border-radius: 8px; border: 1px solid #fecdd3;">[ ADJUSTING MODE ACTIVE ]</p>
+        <div class="card" style="margin-bottom: 20px;">
+            <div class="connection-status" style="display: flex; align-items: center;">
+                <div id="status-dot" class="status-dot"></div>
+                <span id="conn-text" style="color:var(--text-muted); font-size: 0.85rem; font-weight: 600;">CONNECTING...</span>
+                <p id="mode-badge" style="display:none; color:var(--error); font-weight:700; margin-left:auto; background: #fff1f2; padding: 4px 10px; border-radius: 8px; border: 1px solid #fecdd3; font-size: 0.8rem;">[ ADJUSTING MODE ACTIVE ]</p>
             </div>
         </div>
         
-        <div id="control" class="section" style="display:none;">
+        <div id="control" class="section">
             <div class="card">
                 <h3>🛠 Time Settings (Seconds)</h3>
                 <div id="adjust-actions" style="margin-bottom: 2rem;">
@@ -169,8 +144,6 @@
     let isAdjusting = false;
     let currentMainColor1 = "", currentMainColor2 = "";
     let isConnected = false;
-    let isVirtualMode = false;
-    let vPhase = 1;
 
     // --- HÀM TỰ ĐỘNG TÍNH TOÁN ĐÈN ĐỎ ---
     function autoCalculateRed() {
@@ -263,21 +236,15 @@ function handleHardwareUpdate(txt) {
     else if (txt.includes("D2: VANG")) color2 = "YELLOW";
     else if (txt.includes("D2: DO")) color2 = "RED";
 
-    // Cập nhật màu đèn
-    updateLightUI(1, color1, hwTimer);
-    
-    // Tính toán cho Hướng 2 (Nếu cần hiển thị tương ứng)
+    // Hướng 2 (Tương quan với hướng 1)
     let t2 = hwTimer;
     if (color1 === "GREEN") t2 = hwTimer + config.YELLOW;
     else if (color1 === "RED") {
         if (hwTimer > config.YELLOW) t2 = hwTimer - config.YELLOW;
     }
     
+    updateLightUI(1, color1, hwTimer);
     updateLightUI(2, color2, t2);
-
-    // Cần FORCE UI ngay để số ko bị đứng
-    document.getElementById('timer1-display').innerText = hwTimer + "s";
-    document.getElementById('timer2-display').innerText = t2 + "s";
 }
 
     function updateLightUI(idx, color, hwTimer) {
@@ -290,13 +257,6 @@ function handleHardwareUpdate(txt) {
         // --- CẬP NHẬT UI ---
         if (color !== currentLocalColor) {
             if (idx === 1) currentMainColor1 = color; else currentMainColor2 = color;
-            
-            // Đổi màu đèn trên giao diện
-            document.querySelectorAll('[id^="light' + idx + '-"]').forEach(l => l.classList.remove('active'));
-            const target = document.getElementById('light' + idx + '-' + color.toLowerCase());
-            if (target) target.classList.add('active');
-            
-            document.getElementById('status' + idx + '-display').innerText = color + " LIGHT";
             
             // Gán thời gian mới
             if (idx === 1) timeLeft1 = hwTimer; else timeLeft2 = hwTimer;
@@ -313,11 +273,8 @@ function handleHardwareUpdate(txt) {
         dot.className = "status-dot offline";
         connText.innerText = "MẤT KẾT NỐI VỚI THIẾT BỊ";
         connText.style.color = "#ef4444";
-        document.getElementById('status1-display').innerText = "MẤT KẾT NỐI";
-        document.getElementById('status2-display').innerText = "MẤT KẾT NỐI";
-        document.querySelectorAll('.light').forEach(l => l.classList.remove('active', 'blinking-red'));
-        document.getElementById('timer1-display').innerText = "0s";
-        document.getElementById('timer2-display').innerText = "0s";
+        timeLeft1 = 0;
+        timeLeft2 = 0;
     }
 
     function setOnlineUI(dot, connText) {
@@ -328,39 +285,7 @@ function handleHardwareUpdate(txt) {
     }
 
     
-    function toggleVirtualMode() {
-        isVirtualMode = !isVirtualMode;
-        const btn = document.getElementById('btn-virtual');
-        if (isVirtualMode) {
-            btn.innerText = "Disable Virtual Mode";
-            btn.style.background = "#ef4444";
-            vPhase = 1;
-            setVirtualLightState();
-        } else {
-            btn.innerText = "Enable Virtual Mode";
-            btn.style.background = "#8b5cf6";
-            timeLeft1 = 0; timeLeft2 = 0;
-            currentMainColor1 = ""; currentMainColor2 = "";
-        }
-    }
 
-    function setVirtualLightState() {
-        if (!isVirtualMode) return;
-        let c1, c2, t;
-        if (vPhase === 1) { c1 = "GREEN"; c2 = "RED"; t = config.GREEN; }
-        else if (vPhase === 2) { c1 = "YELLOW"; c2 = "RED"; t = config.YELLOW; }
-        else if (vPhase === 3) { c1 = "RED"; c2 = "GREEN"; t = config.GREEN; }
-        else if (vPhase === 4) { c1 = "RED"; c2 = "YELLOW"; t = config.YELLOW; }
-        updateLightUI(1, c1, t);
-        updateLightUI(2, c2, t);
-        timeLeft1 = t;
-        timeLeft2 = t;
-        const dot = document.getElementById('status-dot');
-        const connText = document.getElementById('conn-text');
-        dot.className = "status-dot online";
-        connText.innerText = "VIRTUAL MODE ACTIVE";
-        connText.style.color = "#8b5cf6";
-    }
 
     async function toggleAdjustMode(start) {
         const btnS = document.getElementById('btn-start');
@@ -390,11 +315,8 @@ function handleHardwareUpdate(txt) {
                 const txt = await res.text();
                 if (txt.includes("OK")) {
                     config.GREEN = parseInt(gVal); config.YELLOW = parseInt(yVal); config.RED = parseInt(rVal);
-                    if (isVirtualMode) setVirtualLightState();
-                    else {
-                        timeLeft1 = config[currentMainColor1];
-                        timeLeft2 = config[currentMainColor2];
-                    }
+                    timeLeft1 = config[currentMainColor1];
+                    timeLeft2 = config[currentMainColor2];
                     isAdjusting = false;
                     btnS.style.display = 'inline-block'; btnF.style.display = 'none';
                     box.style.opacity = '0.5'; box.style.pointerEvents = 'none';
@@ -469,27 +391,11 @@ function handleHardwareUpdate(txt) {
         fetchStatus();
         connectWS();
 
-        // CHỈ CHẠY ĐẾM ĐỒNG HỒ CHO VIRTUAL MODE
+        // CHỈ CHẠY ĐẾM ĐỒNG HỒ ĐỂ ĐỒNG BỘ
         setInterval(() => {
-            if (!isAdjusting) {
-                if (isVirtualMode) {
-                    if (timeLeft1 > 0) timeLeft1--;
-                    if (timeLeft2 > 0) timeLeft2--;
-                    if (timeLeft1 <= 0 && timeLeft2 <= 0) {
-                        vPhase++; if (vPhase > 4) vPhase = 1;
-                        setVirtualLightState();
-                    }
-                    document.getElementById('timer1-display').innerText = timeLeft1 + "s";
-                    document.getElementById('timer2-display').innerText = timeLeft2 + "s";
-                } else if (isConnected) {
-                    // TINH CHỈNH: Bộ đếm mượt mà (Smooth Ticker)
-                    // Chỉ giảm số để UI không bị giật, nhưng DỪNG Ở 1S (theo yêu cầu Hardware 1 -> 13)
-                    // Không bao giờ về 0, chờ ESP32 quyết định chuyển màu.
-                    if (timeLeft1 > 1) timeLeft1--;
-                    if (timeLeft2 > 1) timeLeft2--;
-                    document.getElementById('timer1-display').innerText = timeLeft1 + "s";
-                    document.getElementById('timer2-display').innerText = timeLeft2 + "s";
-                }
+            if (!isAdjusting && isConnected) {
+                if (timeLeft1 > 1) timeLeft1--;
+                if (timeLeft2 > 1) timeLeft2--;
             }
         }, 1000);
     }
@@ -506,7 +412,7 @@ function handleHardwareUpdate(txt) {
 
         if (sessionStorage.getItem('adminLoggedIn') === 'true') {
              startAdminSession();
-             const hash = window.location.hash.replace('#', '') || 'dashboard';
+             const hash = window.location.hash.replace('#', '') || 'control';
              showSection(hash);
         }
     });
