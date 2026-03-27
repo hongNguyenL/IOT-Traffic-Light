@@ -19,7 +19,8 @@ public class UploadServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-
+        
+        System.out.println("\n>>> [UploadServlet] Đã nhận 1 Request POST từ " + request.getRemoteAddr());
         byte[] imageBytes = null;
 
         try {
@@ -68,8 +69,9 @@ public class UploadServlet extends HttpServlet {
                     response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Cloud upload failed");
                 }
             } else {
-                System.err.println(">>> [ERROR] imageBytes bi trong.");
-                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "No image data received");
+                System.err.println(">>> [ERROR] imageBytes bi trong (0 byte). Gửi mã lỗi 418 để test.");
+                // Thay thế tạm lỗi 400 thành 418 (I'm a teapot) để chuẩn đoán lỗi
+                response.sendError(418, "No image data received (Diagnostic 418)");
             }
         } catch (Exception e) {
             System.err.println(">>> [EXCEPTION] UploadServlet Error: " + e.getMessage());
