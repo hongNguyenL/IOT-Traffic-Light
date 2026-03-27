@@ -3,7 +3,16 @@
 <%
     // 1. Lấy dữ liệu từ ESP32 gửi lên
     String msg = request.getParameter("msg");
+    // Yêu cầu đi bộ từ Web (Nếu có)
+    String reqPed = request.getParameter("reqPed");
     long currentTime = System.currentTimeMillis();
+
+    if (reqPed != null && !reqPed.isEmpty()) {
+        if (reqPed.equals("1")) Esp32ServerListener.webPedRequest1 = true;
+        if (reqPed.equals("2")) Esp32ServerListener.webPedRequest2 = true;
+        out.print("OK");
+        return;
+    }
 
     if (msg != null && !msg.isEmpty()) {
         // --- TRƯỜNG HỢP ESP32 GỬI TIN NHẮN ---
@@ -18,10 +27,16 @@
         if (request.getParameter("ir1") != null) Esp32ServerListener.ir1Status = request.getParameter("ir1");
         if (request.getParameter("ir2") != null) Esp32ServerListener.ir2Status = request.getParameter("ir2");
 
-        // Phản hồi cho ESP32 đồng bộ đèn thật (G,Y,R)
+        // Phản hồi cho ESP32 đồng bộ đèn thật (G,Y,R,WebPed1,WebPed2)
         out.print(Esp32ServerListener.timeGreen + "," + 
                   Esp32ServerListener.timeYellow + "," + 
-                  Esp32ServerListener.timeRed);
+                  Esp32ServerListener.timeRed + "," +
+                  (Esp32ServerListener.webPedRequest1 ? "1" : "0") + "," +
+                  (Esp32ServerListener.webPedRequest2 ? "1" : "0"));
+        
+        // Reset sau khi gửi ESP32
+        Esp32ServerListener.webPedRequest1 = false;
+        Esp32ServerListener.webPedRequest2 = false;
     } 
     else {
         // --- TRƯỜNG HỢP DASHBOARD (WEB) GỌI ---

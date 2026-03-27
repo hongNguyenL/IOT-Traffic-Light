@@ -24,6 +24,10 @@ public class Esp32ServerListener implements ServletContextListener {
     public static volatile String ir1Status = "0";
     public static volatile String ir2Status = "0";
     
+    // --- THÊM: Yêu cầu đi bộ qua đường từ WEB ---
+    public static volatile boolean webPedRequest1 = false;
+    public static volatile boolean webPedRequest2 = false;
+    
     private Thread keepAliveThread;
 
     @Override

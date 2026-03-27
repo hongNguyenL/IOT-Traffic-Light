@@ -42,9 +42,14 @@
             </div>
         </div>
 
-        <button onclick="requestCrossing()" class="btn-mode btn-primary" style="padding: 1rem 2rem; font-size: 1.1rem; margin-top: 2rem; width: 100%; justify-content: center;">
-             ✋ Request Pedestrian Crossing
-        </button>
+        <div style="display: flex; gap: 10px; margin-top: 2rem; width: 100%;">
+            <button onclick="requestCrossing(1)" class="btn-mode btn-primary" style="flex: 1; padding: 1rem; font-size: 1rem; justify-content: center;">
+                 ✋ Cross Intersection 1
+            </button>
+            <button onclick="requestCrossing(2)" class="btn-mode btn-primary" style="flex: 1; padding: 1rem; font-size: 1rem; justify-content: center;">
+                 ✋ Cross Intersection 2
+            </button>
+        </div>
         
         <p id="request-status" style="margin-top: 1rem; color: var(--success); font-weight: 600; display: none;">Request Sent! Please wait for the green light.</p>
     </div>
@@ -180,16 +185,19 @@
         connText.style.color = "var(--success)";
     }
 
-    async function requestCrossing() {
+    async function requestCrossing(direction) {
         const status = document.getElementById('request-status');
         status.style.display = 'block';
         status.style.color = "var(--success)";
-        status.innerText = "Sending request...";
+        status.innerText = "Sending request for Intersection " + direction + "...";
         try {
-            // Giả lập gửi yêu cầu
+            await fetch('status_api.jsp?reqPed=' + direction);
+            status.innerText = "Request Sent for Intersection " + direction + "! Wait for pedestrian phase.";
+            
+            // Tự ẩn thông báo sau 5 giây
             setTimeout(() => {
-                status.innerText = "Request Sent! Please wait for the green light.";
-            }, 1000);
+                status.style.display = 'none';
+            }, 5000);
         } catch (e) {
             status.innerText = "Error sending request.";
             status.style.color = "var(--error)";
